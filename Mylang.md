@@ -11,7 +11,7 @@ def main():
 
 ```
 
-Above is a hello world application that computes the roughly the following in rust (Note that def main is the program entry point and is requried):
+Above is a hello world application that computes the roughly the following in rust (Note that def main is the program entry point and is required):
 
 ```Rust
 
@@ -268,6 +268,8 @@ enum Collection:
 ```
 
 # By reference
+
+While primitive built in and user defined types are instantiated on the stack and coopied when moved by value, built in containers and most user defined classes are instantiated on the heap and passed by reference:
 
 ```Python
 
@@ -1193,7 +1195,7 @@ Every object has the `id` function that returns the address of the object as a s
 
 # Paths
 
-Use a `__path__` function in calls like `open()` to convert objects to path objects of type `Path` which is the same as Rust#s `std::path::Path`. By default, `__path__` calls `__str__` and converts it into a path object.
+Use a `__path__` function in calls like `open()` to convert objects to path objects of type `Path` which is the same as Rust's `std::path::Path`. By default, `__path__` calls `__str__` and converts it into a path object.
 
 # Drop
 
@@ -1946,7 +1948,7 @@ Requirement::ImplementsFunctions(
 
 ```
 
-and 'Implement the `__iter()__ -> $1` function where $1 implements `__next__() -> $2` where $2 implements `some_function($3, int) -> $4` where $3 implements `__float__() -> float`, $4 has no requirements and $2 also implements `some_other_function()' would evaluate to
+and 'Implement the `__iter()__ -> $1` function where $1 implements `__next__() -> $2` where $2 implements `some_function($3, int) -> $4` where $3 implements `__float__() -> float`, $4 has no requirements and $2 also implements `some_other_function()` would evaluate to
 
 ```Rust 
 
@@ -1990,6 +1992,71 @@ Requirement::ImplementsFunctions(vec![FunctionRequirement {
 
 ```
 
+finally we have
+
+```Python
+
+def f(x, y):
+	return x(y)
+
+```
+
+which evaluates to 
+
+```Python
+
+def f(x: %1, y: %2) -> %3:
+	return x.__call__(y)
+
+```
+
+and from this we have the requirement 'x implements `__call__(%2)` where %2 has no requirements' this can be formalised as
+
+```Rust
+
+Requirement::ImplementsFunctions(
+	vec![FunctionRequirement{ 
+		name: "__call__",
+		args: Some(vec![Requirement::NoRequirements]),
+		ret: Some(vec![Requirement::NoRequirements]),
+	}]
+)
+
+```
+
+when we make a call to `f`, we check the requirement on `x`. If it is satisfied, we create a copy of `f` filling out all the types.
+
+### Fallbackss
+
+As mentioned, for each function call, we test each parameter make sure they match the requirements of the function. In fact, the algorithm is more general than this because poly functions can have multiple definitions indicating fallback functions. So we keep testing requirements on each of the fallback definitions until we find a function that matches, or if we run out of fallbacks and none of them match, we have a type error. Take the following example:
+
+```Python
+
+class A:
+	def __str__():
+		return "str"
+
+class B:
+	def __repr__():
+		return "repr"
+
+def to_string(x):
+	return x.__str__()
+
+def to_string(x):
+	return x.__repr__()
+
+def main():
+
+	print(to_string(A()))
+
+	print(to_string(B()))
+
+
+```
+
+The first implementation of `to_string` has the 'x implements `__str__()` function' and the second implementation has the 'x implements `__repr__()` function'. So in our first call to `to_string`, we check the criteria for `A`. Since it does fulfill the requirements we have found a match and create a copy of `to_string` that takes `A` as an argument. Next we take the second call. We test `B` for the requrement, which fails since it does not implement `__str__`, so we fallback to the next implementation. Since `B` meets these requirements, we create a copy of the second `to_string` implementation which takes `B` as an argument.
+
 ## Equation list
 
 A list of equations of the form `a = b` where a and be can be types or type variables. Equations can look like
@@ -2001,11 +2068,48 @@ A list of equations of the form `a = b` where a and be can be types or type vari
 - bool = bool
 - bool = int
 
-The set of equations is implemented as a list of pairs. A pair is made of two terms, the LHS and the RHS of the equality. Terms are Types and can be type variables or actual types.
+The set of equations is implemented as a list of pairs. A pair is made of two terms, the LHS and the RHS of the equality. Terms are defined as followed:
 
-so the set is defined as `Vec<(Type, Type)>`. For each pair there are 4 cases:
+```Rust
+
+enum Term {
+	ExplicitType(Type),
+	TypeVariable(u64),
+}
+
+```
+
+so the set is defined as `Vec<(Term, Term)>`. For each pair there are 4 cases:
 
 - TypeVariable, TypeVariable: in this case we have $n = $m, so we replace all occurences of $n with $m, or vise versa
 - ExplicitType, TypeVariable: in this case we swap the two, so TYPE = $n becomes $n = TYPE.
 - TypeVariable, ExplicitType: in this case we have $n = TYPE so we do nothing
 - ExplicitType, ExplicitType: In this case we have TYPE_a = TYPE_b. If the types are the same and simple types, remove it from the set as it is redundant. If they are different, this represents a type error. If they are poly types and the same, (list, option, etc.) then equate the internal types. So V<$2, int> = V<bool, int> becomes $2 = bool and int = int. If they are poly types and different, this is a type error.
+
+### Overloading
+
+We can use the requirement and fallback systems together to allow function overloading. Take the following
+
+```Python
+
+def f(x: int):
+	...
+
+def f(x: string):
+	...
+
+def f(x: float):
+	...
+
+def f(x):
+	...
+
+def f():
+	...
+
+def f(x, y)
+	...
+
+```
+
+Since requirements can include explicit types, any number of arguments and nested requirements, we can use this with the fallback system to deduce function overloads. Just as before, we can check the arguments of function calls against the definitions one at a time until we find a match.
