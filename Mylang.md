@@ -143,6 +143,7 @@ Some important side notes on the above example:
 - Because `Custom1` and `Custom2` have no member variables, they must be implemented in rust as `struct Custom1;` and `struct Custom2;`
 - When using static strings, we use `& 'static str`
 - `__str__` must return a string to work correctly. However generally the return type is deduced.
+- All the member variables used are declared in the constructor. If a mamber variable that was not instantiated in the constructor is used elsewhere, this is an error.
 - Also everything is mutable by default. Sorry Rust :(
 
 Finally, the `convert_to_string` function is only to demonstrate duck typing and is not actually needed. The `print` function automatically calls `__str__` on all built in types anyway, so 
@@ -1169,6 +1170,10 @@ def to_string(x):
 
 in the above example the order is reversed. 
 
+# Special functions
+
+Special functions work similarly to how they work in Python, and some of them have arguments or return values with explicit types. If these explicit types are not respected when implementing special functions on custom classes, this is an error.
+
 # Maps
 
 Maps with mutable keys is a logic error. To avoid this, we take a similar approach to python. There are three cases:
@@ -1899,6 +1904,9 @@ enum Type {
 
 	//Identifier used to represent type variables in the unification algorithm
 	TypeIdentifier(u64),
+
+	//Used to resolve requirements. This allows the values of containers to be expressed as requirements rather than explicit types
+	Requirement(Requirement),
 }
 
 ```
@@ -2113,3 +2121,206 @@ def f(x, y)
 ```
 
 Since requirements can include explicit types, any number of arguments and nested requirements, we can use this with the fallback system to deduce function overloads. Just as before, we can check the arguments of function calls against the definitions one at a time until we find a match.
+
+# Init polymorphism
+
+We can create templates for classes based on the requirements of the member variables. Take the following
+
+```Python
+
+class Complex:
+	
+	def __init__(real, imag):
+		self.real = real
+		self.imag = imag
+
+	def __add__(self, other):
+		return Complex(self.real + other.real, self.imag + other.imag)	
+
+```
+
+converting the syntactic sugar we have
+
+```Python
+
+class Complex:
+
+	def __init__(real, imag):
+		self.real = real
+		self.imag = imag
+
+	# Since no getters or setters were explicitly implemented, Mylang provides these defaults
+	def __set_real__(self, real):
+		self.real = real
+
+	def __get_real_(self):
+		return self.real
+
+	def __set_imag__(self, imag):
+		self.imag = imag
+
+	def __get_imag_(self):
+		return self.imag
+
+	def __add__(self, other):
+		return Complex(self.__get_real__().__add__(other.__get_real__()), self.__get_imag_().__add__(other.__get_imag_()))
+
+```
+
+In the above example, we see that `__init__` has no requirements itself, however the `__add__` function does. From this we see that the requirements on emmber variables are a sum of all the requirements on all the member variables in all the member functions. In this case we just have the requirment that `real` implements `__add__($1)` where $1 implements `__get_real__`. Note that `other` in `__add__` has requirements itself, and are separate from `real`'s requiremnts. From this we have two important results:
+
+- Requirements on non-member function variables resuts in the individual function being templated
+- Requirements on member variables (anything on `self`) results in the class being templated.
+
+So in the above example, if we use `Complex(int, int)` and `Complex(float, float)`, this creates two templates of `Complex`. Next we use our implementation of zip to demonstrate class templating:
+
+```Python
+
+class Zip:
+	def __init__(iter_a, iter_b):
+		self.a = iter_a.__iter__()
+		self.b = iter_b.__iter__()
+
+	def __next__():
+		a = self.a.__next__()
+		b = self.b.__next__()
+
+		# Stop the iterator as soon as either zip is finished
+		if a.is_none() or b.is_none():
+			return None
+
+		return some((a, b))
+
+```
+
+in the above example we see that the type of `self.a` is decided by `iter_a.__iter__()`. And `__iter__` is a special function, but it doesn't have a set return type. So we must go to `iter_a` for answers, but again this variable's type is not explicit, so we cannot tell from the definition. We cannot tell from the definiton. To make things more general, we treat class generics the way we treat function generics. We treat monomorphic and polymorphic classes the same. 
+
+First we create a set of requirements for each member variable. In this case, we have 'self.a must implement `__next__`'. Next we create requirements for `iter_a`, namely 'iter_a must implement `__iter__() -> $1` where $1 implements `__next__`.
+
+Now that we have a set of requirements, every time we construct a new `Zip` we check the requirements on the constructor then from this call we deduce the type of `self.a`.
+
+## Exceptions
+
+There are times when the type cannot be deduced by the constructor alone.
+
+```Python
+
+class Container:
+	def __init__():
+		self.a = []
+
+	def extend(item):
+		self.a.append(item)
+
+```
+
+This can only happen with container type. Namely
+
+- List types (Lists)
+- Map types (Dictionaries, sets, etc.)
+- Option
+
+this can be resolved by deducing the type from certain functions that each type has. For example
+
+- `append`, `insert` for list types
+- `insert` for map types
+- `some` for option
+
+also sometimes we can look at the initialisation to deduce type, for example `[2, 5, 4]` and `{ "fred": 2.3, "mike": 6.5 }`.
+
+## Misleading
+
+Some classes look like they will be templated, but it might only be the `__init__` function that is templated:
+
+```Python
+
+class Int:
+	def __int__(value):
+		self.value = int(value)
+
+def main():
+	a = Int(9)
+	b = Int(4.5)
+
+```
+
+it might look as though `Int` would be templated for integers and floats. However the constructor converts every value into a float in its implementation, which means that the `__init__` function is templated. The `float` function always returns a Mylang float, so only one version of `Int` will ever be made, that is where `self.value` is a float. However in the next example, two class templates are made as the values are stored directly and not converted:
+
+```Python
+
+class Int:
+	def __int__(value):
+		self.value = value
+
+def main():
+	a = Int(9)
+	b = Int(4.5)
+
+```
+
+## Summary
+
+The rules for class vs function templating are very simple:
+
+- Class templating is performed based on the member variables
+- Function templating is performed based on the function parameters.
+
+and the way we test for compatibility (via requirements) and deduce type works the same way for both systems. In fact the algorithm is exactly the same, the only difference is instead of looking at function arguments, we look at member variables.
+
+# Self problem
+
+When we call the `self` variable as is in Rust, this gives a reference to the instantiated object. In Mylang this should be the same, except with stack types it should make a copy of the object, but with heap objects this must return a reference counted RC or GC type. 
+
+The problem is that if we have a Rust class `A`, then `self` within `A` returns an `A`, whereas it should return a `Rc<UnsafeCell<A>>`.
+
+We could secretly include a reference to the object in each custom heap structure, however this will mean that every object becomes a cycle and will invalidate reference counting. This could be fixed with a weak reference but this would still add memory overhead to each structure.
+
+What we must do instead is for each `self` object we must convert it to a `Rc<UnsafeCell<A>>` then clone it to respect the reference counting rules. We can do this with roughly the following:
+
+- Obtain a pointer to `self`
+- Since this pointer points to an `A` that exists within a `Rc<UnsafeCell<A>>`, we must decrement N bytes where N is the size in bytes of all the data before `A`
+- We now have a pointer at the beginning of `Rc<UnsafeCell<A>>`, so we cast this back to a `Rc<UnsafeCell<A>>` object.
+- Finally we clone this object to obtain a new reference to `A` that respects the reference counting rules.
+
+NOTE: These rules only apply when we are obtaining `self` on its own. This does not apply to members variable access like `self.a` as tha `a` is stored as a reference counted object anyway or is stack allocated and moved by value. I propose a functions something like
+
+```Rust
+
+fn filthy_cast_to_rc<T>(t: & T) -> Rc<UnsafeCell<T>> {
+    filthy_cast_to_rgc::<T, Rc<UnsafeCell<T>>>(t, 2)
+}
+
+fn filthy_cast_to_gc<T>(t: & T) -> Gc<UnsafeCell<T>> {
+    filthy_cast_to_rgc::<T, Gc<UnsafeCell<T>>>(t, 1)
+}
+
+fn filthy_cast_to_rgc<T, R: Clone>(t: & T, number_of_counts: isize) -> R {
+    unsafe {
+        // Convert the reference to t into a pointer to t
+        let t_pointer = t as * const T;
+        
+        // convert this pointer to t into a pointer to bytes (used for offset function)
+        let bytes_pointer = t_pointer as * const u8;
+        
+        // The RcBox type contains two usize counts (strong and weak counts) then the data.
+        // So to go from the data to the beginning of the RcBox struct, we subtract two usizes worth of bytes from the pointer.
+        // For the GcBox, we only have one usize (a single strong count) and so we subtract one usize.
+        // We supply the number of usizes to subtract as the argument `number_of_counts`
+        let box_begin = bytes_pointer.offset(std::mem::size_of::<usize>() as isize * -number_of_counts);
+        
+        //Magical jiggery pokery to convert pointer to u8 into a pointer to Rc<...>
+        let rc_ref = &box_begin as *const * const u8;
+        
+        let rc_pointer = rc_ref as * const R;
+        
+        //Get a regular reference to the Rc<...> object
+        let rc_ref = &*rc_pointer;
+        
+        //Clone the Rc object. This provides a reference to T that respects the reference counting rules
+        rc_ref.clone()
+    }
+}
+
+```
+
+This functions is safe if and only if the function is called on an object `t` that is itself wrapped in an Rc<UnsafeCell<T>> type, if not this is undefined behaviour.
