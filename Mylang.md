@@ -1174,9 +1174,9 @@ in the above example the order is reversed.
 
 Special functions work similarly to how they work in Python, and some of them have arguments or return values with explicit types. If these explicit types are not respected when implementing special functions on custom classes, this is an error.
 
-# Maps
+# Dictionaries
 
-Maps with mutable keys is a logic error. To avoid this, we take a similar approach to python. There are three cases:
+Dictionaries with mutable keys is a logic error. To avoid this, we take a similar approach to python. There are three cases:
 
 - Stack objects: Stack objects are copied into the map and their hashes are computed over all fields.
 - Built in heap objects:
@@ -1184,7 +1184,7 @@ Maps with mutable keys is a logic error. To avoid this, we take a similar approa
 	- immutable: These are a special variant of the usual list, string, etc. that are immutable and specifically created for use in hash keys. Objects are copied by reference and hashes are computed for each item in the collection.
 - User defined heap objects: Objects are copied by reference and the hash is computed on the reference itself.
 
-Another note for maps is that any map that is a) known at compile time and b) immutable can be implemented as a phf via the `Rust-PHF` crate.
+Another note for dictionaries is that any map that is a) known at compile time and b) immutable can be implemented as a phf via the `Rust-PHF` crate.
 
 # Serde
 
@@ -2348,7 +2348,7 @@ This unholy abomination above is safe if and only if the function is called on a
 
 # The Mutable and Immutable
 
-Mutability is important (ish) as it is used to decide whether a type should be created on the stack or class, and it is also used to prevent mutable keys being used in dictionaries. 
+Mutability is important as it is used to decide whether a type should be created on the stack or class, so we only extend out definition of immutability to this end. For example, there are other cases where a class can be considered mutable other than the cases below, but these cases break the other conditions of stack and so we do not consider them.
 
 ## Overview
 
@@ -2393,55 +2393,6 @@ If we access mutable members outside a class, this can make any class mutable. S
 - If a class contains all private member variables, it may be immutable (if it satisfies other conditions)
 - If a class contains at least one public member variable, it is definitely considered mutable
 
-### Borrowed external mutation
-
-If we assign a member varible from a mutable variable, we may still have mutable references to this variable breaking immutability. Consider
-
-```Python
-
-class MutableClass:
-	def __init__(value):
-		self.x = value
-
-class SeeminglyImmutableClass:
-	def __init__(c: MutableClass):
-		self.__c = c
-
-```
-
-By the rules established so far, `MutableClass` is certainly considered mutable since it contains public members. `SeeminglyImmutableClass` may seem immutable since
-
-- None of its member functions assign to member variables outside `__init__`
-- We don't call any mutable functions on any member variables
-- We declared all the member variables to prevent external mutation
-
-However there is an issue. We pass a mutable value to the constructor and this is stored in the member variables. If we have other references to this passed value we can mutate them and hence break the immutability rule. Continuing with the exmple above we have
-
-```Python
-
-class MutableClass:
-	def __init__(value):
-		self.x = value
-
-class SeeminglyImmutableClass:
-	def __init__(c: MutableClass):
-		self.__c = c
-
-def main():
-	m = MutableClass(100)
-
-	s = SeeminglyImmutableClass(m)
-
-	m.x = 200
-
-```
-
-We can see in the above example that other references to passed data can be used to break immutability.
-
-To solve this we have something like the following restriction on assignments in `__init__` from parameters:
-
-- The value that is assigned to a member variable must be immutable if it comes from a parameter (either the parameter itself, or maybe a result of the paramater)
-
 # Augmented assign
 
 For this section we use the `+=` example, but this can be extended to any augmented assignment operator. 
@@ -2460,3 +2411,39 @@ When deciding whether or not to implement an overload function, the general rule
 # Right operators
 
 Say we have a type `A` which implements `__add__` for integers. If we have a variable `a` of type `A` then `a + 5` is valid, but `5 + a` is not as adding a type `A` is not defined for integers. To fix this, we use Python's approach which is to add a bunch of `r` functions, `__radd__`, `__rsub__` etc. Given `a+b`, the compiler first tries `a.__add__(b)` and if this function is not defined for `a` we try `b.__radd__(a)` instead (if this fails then th requirement is not met). 
+
+# Requirements and fallbacks
+
+```Python
+
+def f(x):
+	return str(x)
+
+def f(x):
+	return repr(x)
+
+def g(x):
+	return f(x)
+
+```
+
+The requirements of `x` in `g` should include the two versions of `f`, the first as a function and the second as a falback. And indeed all function based requirements should have fallbacks. Any time we have a requirment function with fallbacks, the requirements should reflect all the fallbacks. In the above example, `x` contains the requirements of the first implementation of `f` (that is, `x` must implement `__str__`) but it also has a fallback requirement that `x` impement `__repr__`.
+
+Also think of how it works with complex functions
+
+```Python
+
+def f(x):
+	return str(x)
+
+def f(x):
+	return repr(x)
+
+def g(x):
+	return "{f(x)} {float(x)}"
+
+
+
+```
+
+the requirements on `x` in `g` should look something like: 'x should implement `__float__` and x should implement `__str__`, then `__repr__` as a fallback'. So when we apply member functions to a parameter, we propagate these requirements, one set for each fallback.
