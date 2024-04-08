@@ -996,7 +996,7 @@ class Child:
 		self.id = id
 
 	def __str__(self):
-		return self.id
+		return str(self.id)
 
 class Parent:
 	def __init__():
@@ -1017,13 +1017,13 @@ def main():
 
 	m = Manager(p)
 
-	c_1 = Child(p)
-	c_2 = Child(p)
-	c_3 = Child(p)
+	c_1 = Child(p, 1)
+	c_2 = Child(p, 2)
+	c_3 = Child(p, 3)
 
-	p.add_child(c_1, 1)
-	p.add_child(c_2, 2)
-	p.add_child(c_3, 3)
+	p.add_child(c_1)
+	p.add_child(c_2)
+	p.add_child(c_3)
 
 	for child in m.kids():
 		print(child)
@@ -1684,6 +1684,19 @@ def main():
 
 Since `__float__` always returns `float`, we always know that the type of `self.x` is also float. Two difference copies of `init` are made one accepting `float` and one `int` but both result in `self.x` being a float.
 
+## Nesting
+
+Take the following
+
+```Python
+
+def f(x):
+	g(x)
+
+```
+
+In this simple example the requirements of `f` are the requirements of `g`. To generalise, the requirements of a variable are the sum of the requirements of a) all member functions and b) all functions that use it as parameters.
+
 
 # Inference algorithm
 
@@ -2323,4 +2336,127 @@ fn filthy_cast_to_rgc<T, R: Clone>(t: & T, number_of_counts: isize) -> R {
 
 ```
 
-This functions is safe if and only if the function is called on an object `t` that is itself wrapped in an Rc<UnsafeCell<T>> type, if not this is undefined behaviour.
+This unholy abomination above is safe if and only if the function is called on an object `t` that is itself wrapped in an [RG]c<UnsafeCell<T>> type, if not this is undefined behaviour.
+
+# Rough roadmap for inference
+
+1. Obtain a dict mapping class names to sets of class member variables
+2. Reconstruct the ast replacing all BinOps, BoolOps, UnartOps, IfExps, Compares, getters/setters, Subscripts and built in functions (float(), int(), etc.) to their respective functions. I.e. BinOp(a, 'add', b) becomes something like Call(Attribute(a, '__add__'), [b]). All member variable assignments that are NOT in `__init__` or in a getter/setter, replace it with `__set_NAME__` or `__get_NAME__`
+3. Obtain a dict for each function (global and class) that maps parameters (including member variables for class functions) to a list of requirements. Note: be sure to add requirements for variables recursively, looking at all the member functions for the variables, and functions that are called on the variable.
+4. For each class, decide whether it is stack or heap allocated
+5. Add type variables for each variable
+
+# The Mutable and Immutable
+
+Mutability is important (ish) as it is used to decide whether a type should be created on the stack or class, and it is also used to prevent mutable keys being used in dictionaries. 
+
+## Overview
+
+Determining whether a class is mutable or immutable is not as simple as it seems, as there are many operations that can alter mutability. Take the following situations
+
+### Reassigning member variables
+
+Perhaps the simplest example is a class that reassigns its member variables. That is, if a class contains a non-__init__ function that assigns a member variable, the class is no longer immutable. Take the following
+
+```Python
+
+class A:
+	def __init__():
+		self.x = 0
+
+	def change(value):
+		self.x = value
+
+```
+
+### Mutable calls
+
+Next we have mutable calls. If we call a mutable function on a member variable, the class is no longer immutable. For example
+
+```Python
+
+class A:
+	def __init__():
+		self.list = []
+
+	def append(value):
+		self.list.append(value)
+
+```
+
+Even though there is no reassignment of `self.list`, we are mutating `self.list` with the call to append.
+
+### External mutation
+
+If we access mutable members outside a class, this can make any class mutable. So we have to treat a class as mutable if it contains public mutable variables. To avoid this, we must make the member variables private. This will prevent external mutation via reassignment or mutable function calling. So there are two possibilities:
+
+- If a class contains all private member variables, it may be immutable (if it satisfies other conditions)
+- If a class contains at least one public member variable, it is definitely considered mutable
+
+### Borrowed external mutation
+
+If we assign a member varible from a mutable variable, we may still have mutable references to this variable breaking immutability. Consider
+
+```Python
+
+class MutableClass:
+	def __init__(value):
+		self.x = value
+
+class SeeminglyImmutableClass:
+	def __init__(c: MutableClass):
+		self.__c = c
+
+```
+
+By the rules established so far, `MutableClass` is certainly considered mutable since it contains public members. `SeeminglyImmutableClass` may seem immutable since
+
+- None of its member functions assign to member variables outside `__init__`
+- We don't call any mutable functions on any member variables
+- We declared all the member variables to prevent external mutation
+
+However there is an issue. We pass a mutable value to the constructor and this is stored in the member variables. If we have other references to this passed value we can mutate them and hence break the immutability rule. Continuing with the exmple above we have
+
+```Python
+
+class MutableClass:
+	def __init__(value):
+		self.x = value
+
+class SeeminglyImmutableClass:
+	def __init__(c: MutableClass):
+		self.__c = c
+
+def main():
+	m = MutableClass(100)
+
+	s = SeeminglyImmutableClass(m)
+
+	m.x = 200
+
+```
+
+We can see in the above example that other references to passed data can be used to break immutability.
+
+To solve this we have something like the following restriction on assignments in `__init__` from parameters:
+
+- The value that is assigned to a member variable must be immutable if it comes from a parameter (either the parameter itself, or maybe a result of the paramater)
+
+# Augmented assign
+
+For this section we use the `+=` example, but this can be extended to any augmented assignment operator. 
+
+Augmented assignment such as `a += b` can be treated in two ways:
+
+- As syntactic sugar for `a = a + b`
+- As a call on a mutable function on a for example `a.__iadd__(b)`
+
+At first it might seem like all augmented assignments should be treated as syntactic sugar. However, for heap types the temporary value `a+b` will result in an extra allocation. For heap values, mutable functions acting on variables in place is preferable. This approach should not be used on all types, as this will add a mutable function to the class preventing a class from existing on the stack. For classes that the user wishes to keep on the stack, NO overload should be provided, and the compiler should treat this as `a = a + b`. If the user decides to use an augmented assign overload function on a variable they wish to exist on the stack, this will almost certainly be a mutable function which will break the stack rules, and turn the class into a heap variable instead.
+
+To summarise, if an augmented assignment overload function is provided, it is used. If it is not provided, it is replaced with `a = a + b` and the usual requirement/fallback rules are followed. 
+
+When deciding whether or not to implement an overload function, the general rule is as follows: If the class is intended to exist on the stack (i.e. following the three rules, see stack vs heap for more info) an overload should not be used. If the class is a heap value and augmented assignment is desired, the user should provide an overload.
+
+# Right operators
+
+Say we have a type `A` which implements `__add__` for integers. If we have a variable `a` of type `A` then `a + 5` is valid, but `5 + a` is not as adding a type `A` is not defined for integers. To fix this, we use Python's approach which is to add a bunch of `r` functions, `__radd__`, `__rsub__` etc. Given `a+b`, the compiler first tries `a.__add__(b)` and if this function is not defined for `a` we try `b.__radd__(a)` instead (if this fails then th requirement is not met). 
