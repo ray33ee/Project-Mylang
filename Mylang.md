@@ -698,6 +698,30 @@ fn main() {
 
 ```
 
+Getters and setters do not need to be implemented on member variables. For example
+
+```Python
+
+class Currency:
+	def __init__(value):
+		self.pennies = value
+
+	def __get_pennies__():
+		return self.pennies
+
+	def __get_pounds__():
+		return self.pennies / 100
+
+def main():
+
+	c = Currency(34)
+
+	print("pennies: {c.pennies}, pounds: {c.pounds}")
+
+```
+
+is completely valid even though there is no member variable `self.pounds`, so 
+
 # Some/None
 
 Mylang contains the `None` keyword as a pairing with the `some` function. This works as it does in python. We can use `some(5)` or `None` to represent a present value of 5, or an absent value, respectively. The some/none statement can be used to extract the inner value if there is one, similar to using `match` in rust:
@@ -2460,3 +2484,213 @@ When deciding whether or not to implement an overload function, the general rule
 # Right operators
 
 Say we have a type `A` which implements `__add__` for integers. If we have a variable `a` of type `A` then `a + 5` is valid, but `5 + a` is not as adding a type `A` is not defined for integers. To fix this, we use Python's approach which is to add a bunch of `r` functions, `__radd__`, `__rsub__` etc. Given `a+b`, the compiler first tries `a.__add__(b)` and if this function is not defined for `a` we try `b.__radd__(a)` instead (if this fails then th requirement is not met). 
+
+# Multiplicity
+
+Because a polymorphic class can have `n` different implementations and each one `m` different polymorphic member functions, we might expect `mn` combinations. However we can rule out certain combinations. Take
+
+```Python
+
+class A:
+	def __init__(x):
+		self.x = x
+
+	def func_a(self, y):
+		print("Called function a with {y}")
+
+def main():
+
+	a_1 = A(3)
+	a_2 = A(3.4)
+
+	a_1.func_a("hello")
+	a_2.func_a(True)
+
+
+```
+
+In the above example, `A` has two types, one where `self.x` is an `int` (a_1) and another where it is a `float`. We call `func_a` twice with two different arguments, but the string version is only used for a_1 and the boolean version is only used for a_2. So we have one implementation of `A` where `self.x` is an integer and `func_a` takes a string, and another implementation where `self.x` is a float and `func_a` takes a boolean. So instead of every class getting every function, we only implement on where they are needed.
+
+# Filling
+
+When we try and fill out classes and functions, we must have a special symbol table like structure that holds all the polymorphs. 
+
+- For each class we define, we keep a list of polymorphs
+- For each polymorph, we have a set of functions that are called on that particular polymorph. 
+
+So in the example above, this would look like
+
+- Polymorph on `A` where `self.x` is a `float`
+	- Polymorph on `A.func_a` where `y` is a boolean
+- Polymorph on `A` where `self.x` is a `int`
+	- Polymorph on `A.func_a` where `y` is a string
+
+# Questions
+
+Here we provide a list of things that the static analysis needs to figure out:
+
+- Class polymorphs (i.e. when member variables can be different types)
+- Function polymorphs (i.e. when function parameters can be different types)
+- Class immutability (i.e. if a class can be considered immutable)
+- Class location (i.e. if a class is on the stack or heap)
+- Function parameter requirements
+
+# Todo
+
+1. Obtain a dict mapping class names to sets of class member variables
+2. Reconstruct the ast replacing all BinOps, BoolOps, UnartOps, IfExps, Compares, getters/setters, Subscripts and built in functions (float(), int(), etc.) to their respective functions. I.e. BinOp(a, 'add', b) becomes something like Call(Attribute(a, '__add__'), [b]). All member variable assignments that are NOT in `__init__` or in a getter/setter, replace it with `__set_NAME__` or `__get_NAME__`. Replacements:
+	- Function calls
+		- float(x) -> x.\_\_float\_\_
+		- int(x) -> x.\_\_int\_\_
+		- complex(x) -> x.\_\_complex\_\_
+		- id(x) -> x.\_\_id\_\_
+		- char(x) -> x.\_\_char\_\_
+		- str(x) -> x.\_\_str\_\_
+		- repr(x) -> x.\_\_repr\_\_
+		- bool(x) -> x.\_\_bool\_\_
+		- abs(x) -> x.\_\_abs\_\_
+		- len(x) -> x.\_\_len\_\_
+		- iter(x) -> x.\_\_iter\_\_
+		- next(x) -> x.\_\_next\_\_
+		- path(x) -> x.\_\_path\_\_
+		- real(x) -> x.\_\_real\_\_
+		- imag(x) -> x.\_\_imag\_\_
+		- bytes(x) -> x.\_\_bytes\_\_
+	- Binary Ops
+		- a + b -> a.\_\_add\_\_(b)
+		- a - b -> a.\_\_sub\_\_(b)
+		- a * b -> a.\_\_mul\_\_(b)
+		- a / b -> a.\_\_truediv\_\_(b)
+		- a % b -> a.\_\_mod\_\_(b)
+		- a ** b -> a.\_\_pow\_\_(b)
+		- a << b -> a.\_\_lshift\_\_(b)
+		- a >> b -> a.\_\_rshift\_\_(b)
+		- a | b -> a.\_\_or\_\_(b)
+		- a ^ b -> a.\_\_xor\_\_(b)
+		- a & b -> a.\_\_and\_\_(b)
+		- a // b -> a.\_\_floordiv\_\_(b)
+	- Comparators
+		- a < b -> a.\_\_lt\_\_(b)
+		- a <= b -> a.\_\_le\_\_(b)
+		- a == b -> a.\_\_eq\_\_(b)
+		- a != b -> a.\_\_ne\_\_(b)
+		- a > b -> a.\_\_gt\_\_(b)
+		- a <= b -> a.\_\_ge\_\_(b)
+	- Getters and setters
+		- a.VARIABLE = c -> a.\_\_set\_VARIABLE\_\_(c) (Provided the assignment isn't in an init or its own setter function)
+		- a.VARIABLE -> a.\_\_get\_VARIABLE\_\_() (Provided the access isn't in an init or its own getter function)
+	- Unary ops
+		- -a -> a.\_\_neg\_\_()
+		- +a -> a.\_\_pos\_\_()
+		- ~a -> a.\_\_invert\_\_()
+3. Create an algorithm that takes a function and a parameter, and creates a requirement for that paramater
+	- a.b(), where the requirement is that `a` implements `b`
+	- b(a) where the requirements of `a` become the requirements of the function `b`. These we must solve recursively.
+	- Should requirements contain fallbacks, used for augmented assignment and right vs left special functions?
+4. Create the requriements classes (as defined in inference algorithm above) Requirements come from two sources
+
+# Function calls
+
+Say a function `f` contains a call to another function `g` on a parameter like
+
+```Python
+
+def f(x)
+	g(x)
+
+```
+ 
+There are two possibilities, a) that g is some global function or b that g is a function pointer passed to f, like so
+
+```Python
+
+def f(x, g)
+	g(x)
+
+```
+
+Our requirement scheme must be able to handle this case.
+
+# Chaining comparisons?
+
+Maybe dont chain operations and test if a value is between two values with `x in interval(1, 3)`
+
+# Unused requriements
+
+As if the requirement system isn't already complicated enough, just because a class has a function that acts on mamber variables, doesn't meman these should be added to the requirements. If this function is not called on a particular instance, it doesn't make sense to impose those requirements:
+
+```Python
+
+class A:
+	def __init__(x):
+		self.x = x
+
+	def __float__(self):
+		return self.x.__float__()
+
+	def __str__(self):
+		return self.x.__str__()
+
+def main():
+	a_1 = A(Complex(1, 1))
+	a_2 = A(2.3)
+
+	print(a_1)
+	print(float(a_2))
+
+
+```
+
+Since the `__float__` function is never called on `a_1` it should not form a requirement. It would be unfair to exclude a particular type based on a requirement that the compiler can verify is never used. To solve this, we can break down requirements by the member function they come from, or we can create optional requirements
+
+# Slices
+
+Slices can be either Rust-like or Pythonic. We can have the best of both with something like a wrapper around a container that uses the slice for indexing and iterating:
+
+```Python
+
+class ContainerSlice:
+	def __init__(container, slice):
+		self.container = container
+		self.slice = slice
+
+	def __getitem__(self, index: int):
+		return self.container[self.slice.start + index * self.slice.step]
+
+	# Ideally we would return a ContainerSlice with the original container (i.e. ContainerSlice(self.container, ...)), and compose the two start/stop/step strategies into one for efficiency but this is just a demonstration and I cba to do the maths atm even though its not that hard lol
+	def __getitem__(self, slice: Slice):
+		return ContainerSlice(self, slice.start, slice.stop, slice.step)
+
+	def __setitem__(self, index: int, value):
+		self.container[self.start + index * self.step] = value
+
+	# This abomination obtains the number of elements in the slice
+	def __len__(self):
+		return max((self.slice.stop - self.slice.start + (self.slice.stop - self.slice.start) % self.slice.step) // self.slice.step, 0)
+
+	def __iter__(self):
+		return ContainerSliceIterator(self)
+
+# The following iterator will work on normal 'unsliced' containers too. Any container with __getitem__(int) and __len__() should work
+class ContainerIterator:
+	def __init__(container):
+		self.container = container
+		self.ind = 0
+
+	def __next__(self):
+		if self.ind >= len(self.container):
+			return None
+
+		return some(self.container[self.ind])
+
+		self.ind += 1
+
+
+
+
+
+
+
+```
+
+Note: The above example doesn't take into account optional agruments in slices (for example slice(0, None, 2), etc.) and is not a complete listing for ContainerSlices or ContainerIterators.
