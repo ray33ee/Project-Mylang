@@ -1198,9 +1198,9 @@ in the above example the order is reversed.
 
 Special functions work similarly to how they work in Python, and some of them have arguments or return values with explicit types. If these explicit types are not respected when implementing special functions on custom classes, this is an error.
 
-# Maps
+# Dictionaries
 
-Maps with mutable keys is a logic error. To avoid this, we take a similar approach to python. There are three cases:
+Dictionaries with mutable keys is a logic error. To avoid this, we take a similar approach to python. There are three cases:
 
 - Stack objects: Stack objects are copied into the map and their hashes are computed over all fields.
 - Built in heap objects:
@@ -1208,7 +1208,7 @@ Maps with mutable keys is a logic error. To avoid this, we take a similar approa
 	- immutable: These are a special variant of the usual list, string, etc. that are immutable and specifically created for use in hash keys. Objects are copied by reference and hashes are computed for each item in the collection.
 - User defined heap objects: Objects are copied by reference and the hash is computed on the reference itself.
 
-Another note for maps is that any map that is a) known at compile time and b) immutable can be implemented as a phf via the `Rust-PHF` crate.
+Another note for dictionaries is that any map that is a) known at compile time and b) immutable can be implemented as a phf via the `Rust-PHF` crate.
 
 # Serde
 
@@ -2372,7 +2372,7 @@ This unholy abomination above is safe if and only if the function is called on a
 
 # The Mutable and Immutable
 
-Mutability is important (ish) as it is used to decide whether a type should be created on the stack or class, and it is also used to prevent mutable keys being used in dictionaries. 
+Mutability is important as it is used to decide whether a type should be created on the stack or class, so we only extend out definition of immutability to this end. For example, there are other cases where a class can be considered mutable other than the cases below, but these cases break the other conditions of stack and so we do not consider them.
 
 ## Overview
 
@@ -2416,55 +2416,6 @@ If we access mutable members outside a class, this can make any class mutable. S
 
 - If a class contains all private member variables, it may be immutable (if it satisfies other conditions)
 - If a class contains at least one public member variable, it is definitely considered mutable
-
-### Borrowed external mutation
-
-If we assign a member varible from a mutable variable, we may still have mutable references to this variable breaking immutability. Consider
-
-```Python
-
-class MutableClass:
-	def __init__(value):
-		self.x = value
-
-class SeeminglyImmutableClass:
-	def __init__(c: MutableClass):
-		self.__c = c
-
-```
-
-By the rules established so far, `MutableClass` is certainly considered mutable since it contains public members. `SeeminglyImmutableClass` may seem immutable since
-
-- None of its member functions assign to member variables outside `__init__`
-- We don't call any mutable functions on any member variables
-- We declared all the member variables to prevent external mutation
-
-However there is an issue. We pass a mutable value to the constructor and this is stored in the member variables. If we have other references to this passed value we can mutate them and hence break the immutability rule. Continuing with the exmple above we have
-
-```Python
-
-class MutableClass:
-	def __init__(value):
-		self.x = value
-
-class SeeminglyImmutableClass:
-	def __init__(c: MutableClass):
-		self.__c = c
-
-def main():
-	m = MutableClass(100)
-
-	s = SeeminglyImmutableClass(m)
-
-	m.x = 200
-
-```
-
-We can see in the above example that other references to passed data can be used to break immutability.
-
-To solve this we have something like the following restriction on assignments in `__init__` from parameters:
-
-- The value that is assigned to a member variable must be immutable if it comes from a parameter (either the parameter itself, or maybe a result of the paramater)
 
 # Augmented assign
 
@@ -2615,7 +2566,7 @@ Our requirement scheme must be able to handle this case.
 
 Maybe dont chain operations and test if a value is between two values with `x in interval(1, 3)`
 
-# Unused requriements
+# Unused requirements
 
 As if the requirement system isn't already complicated enough, just because a class has a function that acts on mamber variables, doesn't meman these should be added to the requirements. If this function is not called on a particular instance, it doesn't make sense to impose those requirements:
 
@@ -2686,11 +2637,43 @@ class ContainerIterator:
 		self.ind += 1
 
 
+```
 
+Note: The above example doesn't take into account optional agruments in slices (for example slice(0, None, 2), etc.) and is not a complete listing for ContainerSlices or ContainerIterators.
 
+# Requirements and fallbacks
+
+```Python
+
+def f(x):
+	return str(x)
+
+def f(x):
+	return repr(x)
+
+def g(x):
+	return f(x)
+
+```
+
+The requirements of `x` in `g` should include the two versions of `f`, the first as a function and the second as a falback. And indeed all function based requirements should have fallbacks. Any time we have a requirment function with fallbacks, the requirements should reflect all the fallbacks. In the above example, `x` contains the requirements of the first implementation of `f` (that is, `x` must implement `__str__`) but it also has a fallback requirement that `x` impement `__repr__`.
+
+Also think of how it works with complex functions
+
+```Python
+
+def f(x):
+	return str(x)
+
+def f(x):
+	return repr(x)
+
+def g(x):
+	return "{f(x)} {float(x)}"
+>>>>>>> ee08ecf5b50f07da7c000d0b3a4b8cf19ab8d460
 
 
 
 ```
 
-Note: The above example doesn't take into account optional agruments in slices (for example slice(0, None, 2), etc.) and is not a complete listing for ContainerSlices or ContainerIterators.
+the requirements on `x` in `g` should look something like: 'x should implement `__float__` and x should implement `__str__`, then `__repr__` as a fallback'. So when we apply member functions to a parameter, we propagate these requirements, one set for each fallback.
