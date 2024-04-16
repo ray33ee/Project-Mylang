@@ -1909,9 +1909,7 @@ Here we have a list of all types that a variable can be
 - bool
 - int
 - float
-- complex
 - string
-- path
 - bytes
 - list<T>
 - map<K, V>
@@ -2670,10 +2668,86 @@ def f(x):
 
 def g(x):
 	return "{f(x)} {float(x)}"
->>>>>>> ee08ecf5b50f07da7c000d0b3a4b8cf19ab8d460
 
 
 
 ```
 
 the requirements on `x` in `g` should look something like: 'x should implement `__float__` and x should implement `__str__`, then `__repr__` as a fallback'. So when we apply member functions to a parameter, we propagate these requirements, one set for each fallback.
+
+# Rust's traits
+
+We might be able to leverage Rust's powerful trait and generics system to make life easier. For example:
+
+```Python
+
+class A:
+	def __init__(a):
+		self.a = a
+
+	def __float__(self):
+		return self.a.__float__()
+
+```
+
+can be made easier with
+
+
+```Rust
+
+
+trait Float<F> {
+    fn __float__(&self) -> F;
+}
+
+struct A<T> {
+    a: T,
+}
+
+impl<T> A<T> {
+    fn new(a: T) -> Self {
+        A {
+            a,
+        }
+    }
+}
+
+impl<F, T: Float<F>> Float<F> for A<T> {
+    fn __float__(&self) -> F {
+        return self.a.__float__();
+    }
+}
+
+//Not required in the transformation, only required here to complete the example.
+impl Float<f64> for f64 {
+    fn __float__(&self) -> f64 {
+        return *self;
+    }
+}
+
+fn main() {
+
+    let a = A::new(4.5);
+    
+    println!("{}", a.__float__());
+    
+    println!("hello world");
+}
+
+
+```
+
+As shown above, each member function in a class can be given its own trait which will replicate static ducktyping.
+
+# Nested functions
+
+When we have a function like 
+
+```Python
+
+def f(x):
+	g(x)
+
+```
+
+previously we mentioned that the requirements of g on x are passed to f and become the requirements of f on x. This is no longer the case. In this case, x has no requirments and it is down to g to check its own requirements. In general, functions are responsible for their own reuqirements and these requirements are not passed to calling functions.

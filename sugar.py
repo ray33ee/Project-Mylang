@@ -1,5 +1,6 @@
 import utils
 import ast
+import errors
 
 def recursive_resolve_special_functions_expression(expression):
 
@@ -52,7 +53,7 @@ def recursive_resolve_special_functions_expression(expression):
     elif type(expression) is ast.Compare:
 
         if len(expression.ops) != 1 or len(expression.comparators) != 1:
-            raise "Number of operators and number of RHS comparators in ast.Compare must be 1. Chained comparison is not allowed"
+            raise errors.WrongNumberOfComparisons
 
         left = recursive_resolve_special_functions_expression(expression.left)
         right = recursive_resolve_special_functions_expression(expression.comparators[0])
@@ -106,8 +107,7 @@ def recursive_resolve_special_functions_expression(expression):
     elif type(expression) is ast.Slice:
         raise NotImplemented
     else:
-        print(f"Expression {type(expression)} not supported")
-        raise "Error"
+        raise errors.ASTExpressionNotSupported(expression)
 
 
 def recursive_resolve_special_functions_statement(statement):
@@ -138,11 +138,10 @@ def resolve_special_functions(_ast: ast.Module):
             if type(func.body[i]) is ast.Assign:
                 # Firstly, chained assignments aren't supported just yet (i.e. x = y = 5)
                 if len(func.body[i].targets) != 1:
-                    raise "Invalid number of assignment targets. We do not support chained assignment yet"
+                    raise errors.ChainedAssignmentNotImplemented
 
                 # At this point there is exactly one target, so lets fetch it for brevity
                 target = func.body[i].targets[0]
-
 
                 if type(target) is ast.Subscript:
                     # If the target is a subscript, replace with the __setitem__ function

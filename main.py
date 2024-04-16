@@ -2,11 +2,23 @@ import symtable
 import ast
 import utils
 import sugar
+import errors
 
 source = """
 
+class Float:
+    def __init__():
+        self.x = x
+        
+    def __float__(self):
+        return float(self.x)
+        
+    def __add__(self, other):
+        return float(self) + float(other)
 
-
+def main():
+    x[1] = 1
+ 
 """
 
 table = symtable.symtable(source, "", "exec")
@@ -24,13 +36,13 @@ def resolve_member_variables(_ast: ast.Module):
         init = None
         for node in class_node.body:
             if type(node) is not ast.FunctionDef:
-                raise f"Class {class_node.name} contains a non-function node {node.name}. Classes can only contain functions"
+                raise errors.NestedClassException(class_node, node)
             if node.name == "__init__":
                 init = node
                 break
         # If the class has no init function this is an error
         if init == None:
-            raise f"Class {class_node.name} MUST implement __init__"
+            raise errors.ClassMissingInitException(class_node)
         else:
 
             # Get any assignments (a = b) in the initialiser
@@ -60,6 +72,12 @@ print(selves)
 print(ast.dump(my_ast, indent=4))
 
 sugar.resolve_special_functions(my_ast)
+
 print(ast.dump(my_ast, indent=4))
 
 print(ast.unparse(my_ast))
+
+t = symtable.symtable(source, "hel", compile_type="exec")
+
+print("Table")
+utils.recursive_show(t, 0)
