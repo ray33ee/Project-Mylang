@@ -3,6 +3,7 @@ import ast
 import utils
 import sugar
 import errors
+import symbol_table
 
 source = """
 
@@ -15,6 +16,11 @@ class Float:
         
     def __add__(self, other):
         return float(self) + float(other)
+        
+    def cake(self):
+        while Something:
+            with stuff as things:
+                print(Something)
 
 def main():
     x[1] = 1
@@ -63,13 +69,14 @@ def resolve_member_variables(_ast: ast.Module):
 
 my_ast = ast.parse(source, mode='exec')
 
-print(ast.dump(my_ast, indent=4))
+#print(ast.dump(my_ast, indent=4))
 
 selves = resolve_member_variables(my_ast)
 
 print(selves)
 
 print(ast.dump(my_ast, indent=4))
+
 
 sugar.resolve_special_functions(my_ast)
 
@@ -81,3 +88,7 @@ t = symtable.symtable(source, "hel", compile_type="exec")
 
 print("Table")
 utils.recursive_show(t, 0)
+
+tab = symbol_table.Table(my_ast, t)
+
+

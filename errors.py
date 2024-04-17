@@ -34,3 +34,8 @@ class ASTExpressionNotSupported(Exception):
 class ChainedAssignmentNotImplemented(Exception):
     def __str__(self):
         return "Chained assignment has not been implemented"
+
+
+class InvalidTopLevelNodeException(Exception):
+    def __str__(self):
+        return "Invalid top level node. Only functions or classes are allowed as top level nodes"

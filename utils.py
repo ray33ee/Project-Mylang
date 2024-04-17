@@ -1,5 +1,6 @@
 import ast
 import symtable
+import errors
 
 # Given an expression like a.b.c.d, will return the attribute associated with a
 def get_inntermost_attribute(_ast: ast.Attribute):
@@ -22,15 +23,40 @@ def function_iterator(_ast: ast.Module):
                 yield (node, member_function)
 
 
+def variable_iterator(_ast: ast.FunctionDef):
+    pass
+
+
+def parameter_iterator(_ast):
+    pass
+
 # Recursively display the contents of a symbol table
 def recursive_show(table: symtable.SymbolTable, level):
     nest = '\t' * level
 
     for symbol in table.get_symbols():
-        print(f"{nest} symbol {symbol.get_name()} local: {symbol.is_local()}")
+        print(f"{nest} symbol {symbol.get_name()} ({type(symbol)}) local: {symbol.is_local()}")
 
     for child in table.get_children():
         t = child.get_parameters() if type(child) is symtable.Function else ""
         print(f"{nest} {child.get_type()} {child.get_name()} {t}")
         recursive_show(child, level+1)
 
+
+# Get a list of all globals, i.e. all top level nodes - currently this is a tuple of a dictionary of
+# name-function node pairs, and a dictionary of name-class node pairs,
+def get_globals(_ast: ast.Module):
+    functions = {}
+    classes = {}
+
+    for node in _ast.body:
+        if type(node) is ast.FunctionDef:
+            functions[node.name] = node
+        if type(node) is ast.ClassDef:
+            functions = {}
+            for f in node.body:
+                if type(f) is ast.FunctionDef:
+                    functions[f.name] = f
+            classes[node.name] = (node, functions)
+
+    return functions, classes
