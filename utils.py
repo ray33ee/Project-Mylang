@@ -1,6 +1,11 @@
 import ast
 import symtable
+
+import custom_nodes
+import custom_unparser
 import errors
+import symbol_table
+import sugar
 
 # Given an expression like a.b.c.d, will return the attribute associated with a
 def get_inntermost_attribute(_ast: ast.Attribute):
@@ -60,3 +65,65 @@ def get_globals(_ast: ast.Module):
             classes[node.name] = (node, functions)
 
     return functions, classes
+
+def analysis(source):
+    my_ast = ast.parse(source, mode='exec')
+    table = symtable.symtable(source, "", compile_type="exec")
+
+    # Convert certain operations in to their syntactic sugar equivalent
+    sugar.resolve_special_functions(my_ast)
+
+    t = symbol_table.Table(my_ast, table)
+
+    print("##################################")
+    print("Abstract Syntax Tree")
+    print("##################################")
+    print(ast.dump(my_ast, indent=4))
+
+    print("##################################")
+    print("Unparsed content")
+    print("##################################")
+    print(custom_unparser.unparse(my_ast))
+
+    print("##################################")
+    print("Symbol Table")
+    print("##################################")
+    print(t)
+
+
+
+# Function which extracts the names of member variables for all classes in a program
+# Returns a dict mapping class names to a list of member variables
+def resolve_member_variables(_ast: ast.Module):
+    member_mapping = {}
+
+    # Get all the classes in the outermost scope
+    for class_node in filter(lambda node : type(node) is ast.ClassDef, _ast.body):
+        members = set()
+
+        # Get the '__init__' function for the class, if it has one
+        init = None
+        for node in class_node.body:
+            if type(node) is not ast.FunctionDef:
+                raise errors.NestedClassException(class_node, node)
+            if node.name == "__init__":
+                init = node
+                break
+        # If the class has no init function this is an error
+        if init == None:
+            raise errors.ClassMissingInitException(class_node)
+        else:
+
+            # Get any assignments (a = b) in the initialiser
+            for assignment in filter(lambda node : type(node) is ast.Assign, node.body):
+                # Get any assignment target that is an SelfMemberVariable
+                for attribute in filter(lambda node : type(node) is custom_nodes.SelfMemberVariable, assignment.targets):
+                    innermost = get_inntermost_attribute(attribute)
+
+                    # if the attribute is of the form self.SOMETHING then the SOMETHING is a member variable
+                    if innermost.value.id == 'self' and type(innermost.value.ctx) is ast.Load:
+                        members.add(innermost.attr)
+
+        member_mapping[class_node.name] = members
+
+    return member_mapping

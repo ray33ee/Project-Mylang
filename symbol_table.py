@@ -26,7 +26,7 @@ class DumpsterReferenceCounting:
 
 # A class representing a variable in a symbol table
 class Variable:
-    def __init__(self, name, declaration_node):
+    def __init__(self, name):
         self.name = name
         self.type = None
         self.location = None
@@ -34,8 +34,11 @@ class Variable:
         self.is_parameter = None
         self.is_local = None
         self.is_self_variable = None  # True if a variable is a member variable in a class (self.SOMETHING)
-        self.declaration = declaration_node  # A node in the python AST that points to the first assignment of the variable
+        self.declaration = None  # A node in the python AST that points to the first assignment of the variable
         self.variables = []
+
+    def __repr__(self):
+        return self.name
 
 
 # A class representing a function in a symbol table
@@ -45,15 +48,12 @@ class Function:
         self.ast_node = ast_node
         self.variables = []
 
-        print(table)
-
         for t in table.get_symbols():
-            print("pokpkop")
             if type(t) is symtable.Symbol:
-                self.variables.append(t.get_name())
+                self.variables.append(Variable(t.get_name()))
 
     def __str__(self):
-        return f"{self.name} {ast.dump(self.ast_node)} {self.variables}"
+        return f"{self.name} {self.ast_node} {self.variables}"
 
     def parameters(self):
         for variable in self.variables:
@@ -62,12 +62,11 @@ class Function:
 
 
 class Class:
-    def __init__(self, name, node, functions):
+    def __init__(self, name, node, functions, member_variables):
         self.name = name
         self.functions = functions
         self.node = node
-
-# Todo: Make sure Table adds self.VARIABLEs to the symbol tables, and doesnt add 'self' on its own unless its used on its own
+        self.member_variables = member_variables
 
 # Mylang tables are simpler than python tables, since python allows nested functions, classes, and all sorts of
 # topologies, whereas mylang does not. Mylang can have a list of functions and a list of classes. Each class contains
@@ -79,23 +78,38 @@ class Table:
 
         function_nodes, class_nodes = utils.get_globals(_ast)
 
+        member_variables = utils.resolve_member_variables(_ast)
+
         for t in table.get_children():
             if type(t) is symtable.Function:
                 self.functions.append(Function(t.get_name(), function_nodes[t.get_name()], t))
             if type(t) is symtable.Class:
                 node, class_function_nodes = class_nodes[t.get_name()]
 
+
                 class_functions = []
 
                 for f in t.get_children():
                     class_functions.append(Function(f.get_name(), class_function_nodes[f.get_name()], f))
 
-                self.classes.append(Class(t.get_name(), node, class_functions))
+                self.classes.append(Class(t.get_name(), node, class_functions, list(map(lambda x: Variable(x), member_variables[t.get_name()]))    ))
 
+
+    def __str__(self):
+        s = ""
         for f in self.functions:
-            print(f)
+            s += str(f) + "\n"
+            for v in f.variables:
+                s += "    " + v + "\n"
 
         for c in self.classes:
-            print(f"{c.name} {ast.dump(c.node)}")
+            s += f"{c.name} {c.node}\n"
+
+            for m in c.member_variables:
+                s += "    " + str(m) + " <Class Member Variable>\n"
+
             for f in c.functions:
-                print("    " + str(f))
+                s += "    " + str(f) + "\n"
+                for v in f.variables:
+                    s += "        " + str(v) + "\n"
+        return s
