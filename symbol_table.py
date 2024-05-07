@@ -36,6 +36,7 @@ class Variable:
         self.is_self_variable = None  # True if a variable is a member variable in a class (self.SOMETHING)
         self.declaration = None  # A node in the python AST that points to the first assignment of the variable
         self.variables = []
+        self.requirements = None # If the variable is a parameter, this will be filled with its requirements
 
     def __repr__(self):
         return self.name
@@ -100,7 +101,7 @@ class Table:
         for f in self.functions:
             s += str(f) + "\n"
             for v in f.variables:
-                s += "    " + v + "\n"
+                s += "    " + str(v) + "\n"
 
         for c in self.classes:
             s += f"{c.name} {c.node}\n"

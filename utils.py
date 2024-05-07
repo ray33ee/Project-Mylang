@@ -6,6 +6,7 @@ import custom_unparser
 import errors
 import symbol_table
 import sugar
+from requirements import resolve_function
 
 # Given an expression like a.b.c.d, will return the attribute associated with a
 def get_inntermost_attribute(_ast: ast.Attribute):
@@ -89,6 +90,16 @@ def analysis(source):
     print("Symbol Table")
     print("##################################")
     print(t)
+
+    print("##################################")
+    print("First function first argument Requirements")
+    print("##################################")
+
+    it = function_iterator(my_ast)
+    _, first_func = next(it)
+    first_arg = first_func.args.args[0]
+
+    resolve_function(first_func)
 
 
 

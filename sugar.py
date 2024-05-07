@@ -4,6 +4,8 @@ import errors
 import custom_nodes
 import gc
 
+# The code in sugar converts syntactic sugar into their equivalent function calls
+
 def recursive_resolve_special_functions_expression(expression, super_class: ast.ClassDef, super_function: ast.FunctionDef):
 
     built_in_set = {"float", "int", "complex", "id", "char", "str", "repr", "bool", "abs", "len", "iter", "next",

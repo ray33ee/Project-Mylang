@@ -2751,3 +2751,140 @@ def f(x):
 ```
 
 previously we mentioned that the requirements of g on x are passed to f and become the requirements of f on x. This is no longer the case. In this case, x has no requirments and it is down to g to check its own requirements. In general, functions are responsible for their own reuqirements and these requirements are not passed to calling functions.
+
+# Stack or heap new
+
+Creating a new instance via `__init__` should return a `Rc` if the variable is on the heap, or `Self` if it is a stack variable. We pass instances with `clone` which will clone the `Rc` or copy the varible, for heap and stack values respectively.
+
+Create a special marker trait for stack or heap variables?
+
+# Mylang lite
+
+A prototype for Mylang which differs from mylang in the following ways:
+
+- Does not implement fallback methods
+- All variables exist on the heap
+- All heap variables are std::rc::Rc 
+- Can only overload functions by number of parameters
+
+# Stack, Access and This traits
+
+We want to be able to treat stack and heap variables in the same way, to make the code translation easier, however there are fundamental differences between the two:
+
+## Function access
+
+To call a function on a heap variable, the helper function
+
+```Rust
+fn mut_ref_rc<T>(t: & CellRc<T>) -> & mut T {
+    unsafe { UnsafeCell::<_>::get(t).as_mut().unwrap() }
+}
+```
+
+is needed, but for stack variables `Variable.Function()` is enough.
+
+To solve this, we have a trait `Access` which exposes one function `access` that for heap variables stored as `CellRc<T>` returns `&T` and for stack variables of type `T` returns `&T`. 
+
+```Rust
+
+trait Access {
+	
+}
+
+```
+
+
+We can implement a blanket implementaion for all `CellRc<T>` with
+
+```Rust
+
+
+
+
+```
+
+## Access to Self
+
+If a function needs to move a whole `self`, maybe it needs to return self, this also happens differently for heap and stack variables. For stack variables, we return `*self` but for heap variables we must use the dirty cast from `T` to `CellRc<T>`
+
+# Requirement algorithm
+
+Resolving requirements is the core of the mylang static analysis. We start with a function `resolve_requirement` which takes a function and an argument in that function and returns a requirement for that function.
+
+1. If the argument has a type annotation. If it does, then the requirement becomes an explicit type with the name given in the annotation.
+2. We look over all calls to methods of the argument (and any calls on any aliases of the argument) and any calls to stand alone functions that take the argument or any alias as a parameter, and build a tree of member functions and function requirements.
+3. If this tree is not empty, then we have a function list requirement. If this list is empty, then there are no requirements
+
+Since step one is trivial once a Python AST has been generated, we focus on step 2. To take an example, sets say we have a function `f` and a variable we wish to track requirements for called `x`. Assume we have already checked for a type annotation on `x` and none were found. This means we must start step 2. First we create a list of variables to track, starting with `\[x\]`.
+
+Than for each variable in the list we look for:
+
+- Any aliases of the variable (i.e. `y = x`)
+	- If we find an alias, we add this to the list of variables to track
+- Any method calls on the variable (i.e. `x.some_function()`)
+	- If we find a method call we add this to the requirement list then we perform a search on all parameters passed and the return value.
+- Any global function calls taking the variable as a parameter (i.e. `some_function(x)`)
+	- We compute the requirements for the function then add these to the variable
+
+For each method call on the variable, we recursively complete the same steps to resolve the requirements on any arguments and the return value. When all ends are exhausted (i.e. with concrete types, no return/paramaters, or no requirements) then the search is complete.
+
+
+# Revised strategy
+
+we have a function called `resolve_requirements` which takes an ast functiondef object as a paramater.
+
+In this function, we define a dictionary called `symbols` which maps argument names to a list of aliases and a set of requirements.
+
+When we come accross an expression which acts on any of the alias variables, we recursively add the requirements to the requirement stored in the dict.
+
+When an alias of a paramater is created, this is added to the dict
+
+When a return value for a member function is assigned to a variable, that variable is added to the list, its alias tracked and its requirements added too.
+
+Take the following abomination:
+
+```Python
+
+def func(x, y):
+	#1
+	alias_x = x
+	#2
+	float_x = x.__float__()
+	#3
+	sums = float_x.__add__(y.__float__())
+	#4
+	alias_alias_x = alias_x
+	#5
+	return (alias_alias_x.__str__(), sums.__float__())
+	#6
+
+```
+
+Here we outline the states of `resolve_requirements` at each statement in `func`:
+
+1. `symbols = { "x": ([], None), "y": ([], None) }`
+2. `symbols = { "x": (["alias_x"], None), "y": ([], None) }`
+3. `symbols = { "x": (["alias_x"], ImplementsFloat), "y": ([], None), "float_x": ([], None) }`
+4. `symbols = { "x": (["alias_x"], ImplementsFloat), "y": ([], ImplementsFloat), "float_x": ([], ImplementsAddToYDotFloat), "sums": ([], None) }`
+5. `symbols = { "x": (["alias_x", "alias_alias_x"], ImplementsFloat), "y": ([], ImplementsFloat), "float_x": ([], ImplementsAddToYDotFloat), "sums": ([], None) }`
+6. `symbols = { "x": (["alias_x", "alias_alias_x"], ImplementsFloatAndImplementsStr), "y": ([], ImplementsFloat), "float_x": ([], ImplementsAddToYDotFloat), "sums": ([], ImplementsFloat) }`
+
+the last step is to resolve all temporary variables into the argument variables. Idk how to do this yet so this is tomorrow's problem lol gl tomorrow Will.
+
+`symbols = { "x": (["alias_x", "alias_alias_x"], ImplementsFloatWhichImplementsAddToYDotFloatWhereTheSumImplementsFloatAndAlsoImplementsStr), "y": ([], ImplementsFloat)}`
+
+Resolving temporary variables can be done by replacing a requirement with a special placeholder indicating the variable. In the above example, the return value for `x.__float__()` has no requirements when it is formed, but it does have a return value. So in place of a requirement on the return value, we store the name of the variable we assign to, `float_x`. At the end of parsing, we can replace all of these special placeholders with their requirements.
+
+Optimisation: We make a slight adjustment to the above strategy. Instead of mapping argument names to a list-requirement pair, we map argument names to requirements. When we add an alias, we map that to the requirement of the aliased variable. Modifying one requirement will modify the requirements for all aliases, since the requirements are passed by reference.
+
+# Things and stuff:
+
+Any method call chain can be represented as
+
+a.b(...).c(...). ... z(...)
+
+each function can have args that are either another method call chain or None.
+
+First we start with a variable `x`.
+
+`x` has n member functions `mem_1_1` to `mem_1_n`.
