@@ -1498,7 +1498,7 @@ Mylang grammar is as follows:
 
 Mylang source --> Preprocessor --> Python AST parse --> Static analysis --> Mylang AST --> ????? --> Rust source code
 
-# Type deduction algorithm
+# Type deduction algorithm 
 
 When deducing types, it is not always immediately obvious what the types are. Take the following example
 
