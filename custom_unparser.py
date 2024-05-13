@@ -7,10 +7,46 @@ class _Unparser(ast._Unparser):
         super().__init__()
 
     def visit_SolitarySelf(self, node):
+        self.write("SOLITARYself")
+
+    def visit_SelfMemberFunction(self, node):
+        self.write("self.")
+        self.write(node.id)
+        with self.delimit("(", ")"):
+            comma = False
+            for a in node.args:
+                if comma:
+                    self.write(", ")
+                else:
+                    comma = True
+                self.traverse(a)
+    def visit_SelfMemberVariable(self, node):
+        self.write("self.")
         self.write(node.id)
 
-    def visit_SelfMemberVariable(self, node):
-        self.visit_Attribute(node)
+    def visit_MemberFunction(self, node):
+        self.traverse(node.expr)
+        self.write(".")
+        self.write(node.id)
+        with self.delimit("(", ")"):
+            comma = False
+            for a in node.args:
+                if comma:
+                    self.write(", ")
+                else:
+                    comma = True
+                self.traverse(a)
+
+    def visit_MyCall(self, node):
+        self.write(node.id)
+        with self.delimit("(", ")"):
+            comma = False
+            for a in node.args:
+                if comma:
+                    self.write(", ")
+                else:
+                    comma = True
+                self.traverse(a)
 
 def unparse(ast_obj):
     unparser = _Unparser()

@@ -23,6 +23,15 @@ class Integer(MType):
         return "Integer"
 
 
+class Char(MType):
+
+    def mangle(self):
+        return "c"
+
+    def __repr__(self):
+        return "Char"
+
+
 class Floating(MType):
     def mangle(self):
         return "f"

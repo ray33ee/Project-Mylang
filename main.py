@@ -11,27 +11,72 @@ import m_types
 
 source = """
 
-def thing(x, y):
-    x.something(y.something_else())
 
+class Complex:
+	def __init__(realz, imagz):
+		self.real = realz
+		self.imag = imagz
+		
+	def __get_real__(self):
+	    return self.real
+	
+	def __real__(self):
+	    return self.real
+
+	def __add__(self, rhs):
+		return Complex(real(self) + real(rhs), imag(self) + imag(rhs))
+
+
+def main():
+	c1 = Complex(1, 2)
+	c2 = Complex(1.0, 2.0)
+
+	c3 = c2 + c1
+
+	c1 = c1 + 5
+
+	print(c1)
+	print(c2)
+	print(c3)
+
+"""
+
+source = """
+
+
+class Test:
+    def __init__():
+        return self.a
+        
+    def __get_a__(self):
+        return self.a
+    
+    def get(self):
+        return self.a
+        
+    def set(self, a):
+        self.a = a
+        
+    def test(self):
+        thing(3, 5.0, "Yes", a.b.c)
+        
+    def me(self):
+        return self
+    
+    def test(self):
+        return -a
+
+def main():
+    c = (a+3).b()[5]
 """
 
 table = symtable.symtable(source, "", "exec")
 
 utils.analysis(source)
 
-bodies = [mangler.Function([m_types.Integer(), mangler.Class([m_types.Boolean()], mangler.Name("s"))], m_types.Integer()),
-
-mangler.Class([mangler.Class([m_types.Boolean()], mangler.Name("s")), mangler.Class([m_types.Integer()], mangler.Name("t") )]),
-
-mangler.Function([m_types.Vector(m_types.Integer()), m_types.String(), mangler.Class([m_types.Floating()], mangler.Name("complex")), m_types.Floating()]),
-
-mangler.Function([m_types.Dictionary(m_types.String(), m_types.Integer())]),
-
-
-          ]
-
-for body in bodies:
-    mangler.mangler_demanger_test(body, True)
 
 print("All tests passed")
+
+m = mangler.Mangler()
+
+print(m(mangler.Name("__add__"), mangler.Function([m_types.Integer()])))

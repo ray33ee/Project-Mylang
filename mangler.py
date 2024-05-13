@@ -28,9 +28,8 @@ class Name:
 
 
 class Function:
-    def __init__(self, args, ret=None):
+    def __init__(self, args):
         self.args = args
-        self.ret = ret
 
     def mangle(self):
         mang = "F"
@@ -38,13 +37,10 @@ class Function:
         for a in self.args:
             mang = mang + a.mangle()
 
-        if self.ret:
-            mang = mang + "R" + self.ret.mangle()
-
         return mang
 
     def __repr__(self):
-        return "Function(" + repr(self.args) + ", " + repr(self.ret) + ")"
+        return "Function(" + repr(self.args) + ")"
 
 
 class Class(MType):
@@ -85,22 +81,27 @@ class Mangler:
 
 
 def mangler_demanger_test(body, verbose=False):
-    identifier = Name("test")
 
-    m = Mangler()
+    if type(body) is list:
+        for b in body:
+            mangler_demanger_test(b, verbose)
+    else:
+        identifier = Name("test")
 
-    mangled = m(identifier, body)
+        m = Mangler()
 
-
-    d = demangler.Demangler()
-
-    _, bod = d(mangled)
-
-    if verbose:
-        print("Body:      " + repr(body))
-        print("Demangled: " + repr(bod))
-        print("Mangled:   " + mangled)
+        mangled = m(identifier, body)
 
 
+        d = demangler.Demangler()
 
-    assert repr(bod) == repr(body)
+        _, bod = d(mangled)
+
+        if verbose:
+            print("Body:      " + repr(body))
+            print("Demangled: " + repr(bod))
+            print("Mangled:   " + mangled)
+
+
+
+        assert repr(bod) == repr(body)

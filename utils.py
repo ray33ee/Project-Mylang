@@ -6,10 +6,12 @@ import custom_unparser
 import errors
 import symbol_table
 import sugar
+import mangler
+import m_types
 from requirements import resolve_function
 
 # Given an expression like a.b.c.d, will return the attribute associated with a
-def get_inntermost_attribute(_ast: ast.Attribute):
+def get_innermost_attribute(_ast: ast.Attribute):
     thing = _ast
     while type(thing.value) is not ast.Name:
         thing = thing.value
@@ -23,10 +25,10 @@ def get_inntermost_attribute(_ast: ast.Attribute):
 def function_iterator(_ast: ast.Module):
     for node in _ast.body:
         if type(node) is ast.FunctionDef:
-            yield (None, node)
+            yield None, node
         if type(node) is ast.ClassDef:
             for member_function in filter(lambda n : type(n) is ast.FunctionDef, node.body):
-                yield (node, member_function)
+                yield node, member_function
 
 
 def variable_iterator(_ast: ast.FunctionDef):
@@ -74,7 +76,6 @@ def analysis(source):
     # Convert certain operations in to their syntactic sugar equivalent
     sugar.resolve_special_functions(my_ast)
 
-    t = symbol_table.Table(my_ast, table)
 
     print("##################################")
     print("Abstract Syntax Tree")
@@ -89,17 +90,43 @@ def analysis(source):
     print("##################################")
     print("Symbol Table")
     print("##################################")
-    print(t)
+    #t = symbol_table.Table(my_ast, table)
+    #print(t)
+    print("Symbol table stuff is broken atm come back later")
 
     print("##################################")
     print("First function first argument Requirements")
     print("##################################")
 
-    it = function_iterator(my_ast)
-    _, first_func = next(it)
-    first_arg = first_func.args.args[0]
+    #it = function_iterator(my_ast)
+    #_, first_func = next(it)
+    #first_arg = first_func.args.args[0]
 
-    resolve_function(first_func)
+    #resolve_function(first_func)
+    print("Requirements not yet implemented")
+
+    print("##################################")
+    print("Mangler and Demangler tests")
+    print("##################################")
+
+    bodies = [
+        mangler.Function([m_types.Integer(), mangler.Class([m_types.Boolean()], mangler.Name("s"))]),
+
+        mangler.Function([m_types.Char(), mangler.Class([m_types.Boolean()], mangler.Name("s"))]),
+
+        mangler.Class([mangler.Class([m_types.Boolean()], mangler.Name("s")),
+                       mangler.Class([m_types.Integer()], mangler.Name("t"))]),
+
+        mangler.Function([m_types.Vector(m_types.Integer()), m_types.String(),
+                          mangler.Class([m_types.Floating()], mangler.Name("complex")), m_types.Floating()]),
+
+        mangler.Function([m_types.Dictionary(m_types.String(), m_types.Integer())]),
+
+        mangler.Function([]),
+
+    ]
+
+    mangler.mangler_demanger_test(bodies, True)
 
 
 
@@ -129,7 +156,7 @@ def resolve_member_variables(_ast: ast.Module):
             for assignment in filter(lambda node : type(node) is ast.Assign, node.body):
                 # Get any assignment target that is an SelfMemberVariable
                 for attribute in filter(lambda node : type(node) is custom_nodes.SelfMemberVariable, assignment.targets):
-                    innermost = get_inntermost_attribute(attribute)
+                    innermost = get_innermost_attribute(attribute)
 
                     # if the attribute is of the form self.SOMETHING then the SOMETHING is a member variable
                     if innermost.value.id == 'self' and type(innermost.value.ctx) is ast.Load:

@@ -68,7 +68,6 @@ def process_expr(expr: ast.Expr, symbols):
             elif type(expr.func.value) is ast.Call:
                 # If expression is x.something(...).something_else()
 
-                print("Pokpok")
 
                 for a in expr.func.value.args:
                     print(process_expr(a, symbols).pretty())
@@ -99,7 +98,6 @@ def process_expr(expr: ast.Expr, symbols):
         raise NotImplemented
     elif t is ast.Call:
         print(ast.dump(expr))
-
         raise NotImplemented
     elif t is ast.Constant:
         raise NotImplemented

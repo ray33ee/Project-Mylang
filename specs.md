@@ -89,15 +89,16 @@
 - 3 [Built-in Types](#bi_types)
 	- 3.1 [`bool`](#bi_bool)
 	- 3.2 [`int`](#bi_integer)
-	- 3.3 [`float`](#bi_float)
-	- 3.4 [Id](#bi_id)
-	- 3.5 [`List`](#bi_list)
-	- 3.6 [`String`](#bi_string)
-	- 3.7 [`Bytes`](#bi_bytes)
-	- 3.8 [Dictionary](#bi_dict)
-	- 3.9 [`Set`](#bi_set)
-	- 3.10 [Option](#bi_option)
-	- 3.11 [Result](#bi_result)
+	- 3.3 [`char`](#bi_char)
+	- 3.4 [`float`](#bi_float)
+	- 3.5 [Id](#bi_id)
+	- 3.6 [`List`](#bi_list)
+	- 3.7 [`String`](#bi_string)
+	- 3.8 [`Bytes`](#bi_bytes)
+	- 3.9 [Dictionary](#bi_dict)
+	- 3.10 [`Set`](#bi_set)
+	- 3.11 [Option](#bi_option)
+	- 3.12 [Result](#bi_result)
 - 4 [Exceptionless](#exceptionless)
 - 5 [Stack, Heap and the Rule of Three](#stack_heap_rot)
 	- 5.1 [Stack](#stack)
@@ -506,39 +507,43 @@ Boolean type can be `true` or `false` based on Rust's [bool](https://doc.rust-la
 
 Signed 64-bit integer based on Rust's `i64`
 
-## 3.3 `float` <a name="bi_float"></a>
+## 3.3 `char` <a name="bi_char"></a>
+
+Signed character type based on Rust's `Char`
+
+## 3.4 `float` <a name="bi_float"></a>
 
 Double precision 64-bit float based on Rust's [f64](https://doc.rust-lang.org/std/primitive.i64.html)
 
-## 3.4 `Id` <a name="bi_id"></a>
+## 3.5 `Id` <a name="bi_id"></a>
 
 Integer like value representing a unique ID given to variables, accessed with the [`__id__`](#__id__) function. Based on Rust's [usize](https://doc.rust-lang.org/std/primitive.usize.html)
 
-## 3.5 `List` <a name="bi_list"></a>
+## 3.6 `List` <a name="bi_list"></a>
 
 Vector of elements stored sequentially in memory. Based on Rust's [Vec\<T\>](https://doc.rust-lang.org/std/vec/struct.Vec.html)
 
-## 3.6 `String` <a name="bi_string"></a>
+## 3.7 `String` <a name="bi_string"></a>
 
 Stores a string
 
-## 3.7 `Bytes` <a name="bi_bytes"></a>
+## 3.8 `Bytes` <a name="bi_bytes"></a>
 
 [List](#bi_list) of bytes
 
-## 3.8 `Dictionary` <a name="bi_dict"></a>
+## 3.9 `Dictionary` <a name="bi_dict"></a>
 
 Dictionary mapping keys to values. Keys call [`__hash__`](#__hash__) to compute hash values. Based on Rust's [HashMap\<K\>\<V\>](https://doc.rust-lang.org/std/collections/struct.HashMap.html) 
 
-## 3.9 `Set` <a name="bi_set"></a>
+## 3.10 `Set` <a name="bi_set"></a>
 
 A mathematical set, based on Rust's [HashSet\<T\>](https://doc.rust-lang.org/std/collections/struct.HashSet.html)
 
-## 3.10 `Option` <a name="bi_option"></a>
+## 3.11 `Option` <a name="bi_option"></a>
 
 Value that can either be `None` or `Some` containing some value. Based on Rust's [Option](https://doc.rust-lang.org/std/option/). A value can be used as an option by either setting it to the constant `None` or by calling [`some()`](#bf_some) and passing the object as an agrument.
 
-## 3.11 `Result` <a name="bi_result"></a>
+## 3.12 `Result` <a name="bi_result"></a>
  
 Value that can either be `Ok` representing a success and containing a value or `err` representing failure and containing the error. Based on Rust's [Result](https://doc.rust-lang.org/std/result/). A success result can be created with [`ok()`](#bf_ok) and a failure with [`err()`](#bf_err) passing the success or error respectively.
 

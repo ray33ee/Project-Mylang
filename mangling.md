@@ -16,7 +16,7 @@ pair = \[length\]\[identifier\]
 
 body = \[function\] | \[class\]
 
-function = F\[type\]*(R\[type\])?
+function = F\[type\]*
 
 -- used to describe classes in nested types
 class = C\[total_length\]\[type\]*

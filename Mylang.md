@@ -2888,3 +2888,28 @@ each function can have args that are either another method call chain or None.
 First we start with a variable `x`.
 
 `x` has n member functions `mem_1_1` to `mem_1_n`.
+
+# Special nodes
+
+Some expresions cannot be resolved during syntactic sugar conversion, these expressions can only be resolved during code generation, i.e. when a template is created. These expresions are `a.b()`, binary ops and augmented assigns.
+
+## `a.b()`
+
+This expression can be interpreted as '`b` is a member function of the object `a`' which converts to `a.b()` or it can be interpreted as '`b` is a callable member variable of the object `a` and we call `b()`' which evaluates to `a.__get_b__().__call__()`. Since we can only know based on the type of `a` this must be resovled during templating.
+
+## Binary Ops
+
+Left and right binary functions rely on knowing the types of the arguments to decide which one to use. This means they can only be resolved during templating.
+
+## Augmented assign
+
+Augmented assigns are treated differently based on whether the object location (heap or stack). Take `a += b`:
+
+- Stack: `a = a + b`
+- Heap: `a.__iadd__(b)`
+
+Since knowing the location requires knowing the type, this can only be resolved during templating
+
+# Algorithm
+
+Resolve variable types and recursively resolve function calls, class construction and member function calls

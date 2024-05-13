@@ -33,6 +33,8 @@ class Demangler:
             return m_types.Boolean(), string[1:]
         elif ident == "i":
             return m_types.Integer(), string[1:]
+        elif ident == "c":
+            return m_types.Char(), string[1:]
         elif ident == "f":
             return m_types.Floating(), string[1:]
         elif ident == "a":
@@ -98,16 +100,7 @@ class Demangler:
 
             args.append(arg)
 
-        if string != "":
-            if string[0] == "R":
-                ret, string = self.demangle_type(string[1:])
-
-                if string != "":
-                    raise "Demangle error"
-            else:
-                raise "Demangle error"
-
-        return mangler.Function(args, ret)
+        return mangler.Function(args)
 
 
     def get_lengthed_data(self, string):
