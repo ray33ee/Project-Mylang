@@ -91,11 +91,19 @@ def recursive_resolve_special_functions_expression(expression, super_class: ast.
         left = recursive_resolve_special_functions_expression(expression.left, super_class, super_function)
         right = recursive_resolve_special_functions_expression(expression.comparators[0], super_class, super_function)
 
+        op_type = type(expression.ops[0])
+
+        # Replace a is b with a.__id__().__eq__(b.__id__())
+        # Replace a in b with b.__contains__(a)
+        # Add an extra negate for the Not varieties
+        if (op_type is ast.Is) or (op_type is ast.IsNot) or (op_type is ast.In) or (op_type is ast.NotIn):
+            raise NotImplemented
+
         if type(left) is ast.Name:
             if left.id == "self":
-                return custom_nodes.SelfMemberFunction(compare_op_mapping[type(expression.ops[0])], [right])
+                return custom_nodes.SelfMemberFunction(compare_op_mapping[op_type], [right])
 
-        return custom_nodes.MemberFunction(left, compare_op_mapping[type(expression.ops[0])], [right])
+        return custom_nodes.MemberFunction(left, compare_op_mapping[op_type], [right])
 
 
     elif type(expression) is ast.Call:

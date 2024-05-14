@@ -100,8 +100,11 @@ def mangler_demanger_test(body, verbose=False):
         if verbose:
             print("Body:      " + repr(body))
             print("Demangled: " + repr(bod))
-            print("Mangled:   " + mangled)
+            print("Mangled:   " + str(mangled))
 
 
 
         assert repr(bod) == repr(body)
+
+
+

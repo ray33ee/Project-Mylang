@@ -2913,3 +2913,96 @@ Since knowing the location requires knowing the type, this can only be resolved 
 # Algorithm
 
 Resolve variable types and recursively resolve function calls, class construction and member function calls
+
+# Code generation
+
+When 'p' is prefixed to classes and functions this indicates it is a mylang polymorphic function. When 'c' is prefixed to classes and functions this indicates it is a function that is ready to be converted into code. This is to avoid confusion when refering to the two.
+
+## Strategy
+
+Code generation works by first looking to the `main` function (which itself cannot be polymorphic) then any function calls and class constructors are converted into actual non-templated functions and classes. Functions and member functions are recursively resolved like this. To do this we define some helper functions
+
+## Helper functions
+
+### `deduce_pfunction`
+
+This is used by all the other deduce functions, as they all one way or another take a pfunction and a list of arguments and conver it into a cfunction IR. And any classes, global functions and member functions within the class are also deduced.
+
+Deduction serves two purposes:
+
+1. Evaluate the return type of a function
+2. Deduce the argument types for any function calls within a function
+
+
+
+### `deduce_main`
+
+Used on the main function, which is treated slightly differently since it is not technically polymorphic itself
+
+### `deduce_global_pfunction`
+
+
+
+### `deduce_pclass`
+
+Here we take a polymorphic class, a list of types for the constructor, and with this we deduce the types of all the fields in the class by deducing the `__init__` method in the constructor.
+
+1. We obtain the ast node for the polymorphic class
+2. We call deduce on `__init__` passing the list of types for the constructor
+3. Get the types of the fields
+4. Use this to create an IR class for the code class. Note: This only contains the struct and `__init__` methods that were called. Other functions are added as and when they are neede with `deduce_member_pfunction`.
+
+### `deduce_member_pfunction`
+
+## IR
+
+We provide an intermediate representation, the translator converts polymorphic functions and classes into actual functions and classes in the form of an IR, then this IR is converted into Rust code. Given the code
+
+```Python
+
+class Test:
+	def __init__(x):
+		self.x = x
+
+	def __str__(self):
+		return str(self.x)
+
+	def __float__(self):
+		return float(self.x)
+
+
+def f(a):
+	return f"f{float(a)} s{str(a)}"
+
+
+def main():
+	a1 = 33
+	a2 = "hello"
+	a3 = 8.7
+
+	b1 = Test(a1)
+	b2 = Test(a2)
+
+	print(f(b1))
+
+	print(b2)
+
+	print(f(True))
+
+```
+
+we have an IR that looks something like
+
+```Python
+cClass("_ZN4TestEC1i", ast_node_for_Test)
+	cFunction("_ZN8__init__EFi", ast_node_for_Test___init__, [], "_ZN4TestEC1i")
+	cFunction("_ZN7__str__EF", ast_node_for_Test___str__, [], String)
+cClass("_ZN4TestEC1u", ast_node_for_Test)
+	cFunction("_ZN7__str__EF", ast_node_for_Test___str__, [], String)
+cFunction("_ZN1fEFi", ast_node_for_f, [Integer], None)
+cFunction("_ZN1fEFu", ast_node_for_f, [String], None)
+cFunction("_ZN1fEFb", ast_node_for_f, [Boolean], None)
+cFunction("main", ast_node_for_main, [], None)
+```
+
+Then each cClass and cFunction is converted into generated code by replacing function calls and class names with mangled names, and also replacing certain nodes that can only be resolved during code generation (a.b(), augmented assign, left/right binops)

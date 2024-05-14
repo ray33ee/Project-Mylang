@@ -29,22 +29,13 @@ class SelfMemberFunction(ast.AST):
 # expression.identifier(args), member function call
 class MemberFunction(ast.AST):
 
-    _fields = ["expr", "id", "args"]
-    def __init__(self, expr: ast.expr, identifier, args):
+    _fields = ["exp", "id", "args"]
+    def __init__(self, exp: ast.expr, identifier, args):
         super().__init__()
-        self.expr = expr
+        self.exp = exp
         self.id = identifier
         self.args = args
 
-
-# expression.identifier(args), member function call
-class MemberVariable(ast.AST):
-
-    _fields = ["expr", "id"]
-    def __init__(self, expr: ast.expr, identifier):
-        super().__init__()
-        self.expr = expr
-        self.id = identifier
 
 class MyCall(ast.AST):
 

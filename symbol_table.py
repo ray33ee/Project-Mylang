@@ -61,6 +61,23 @@ class Function:
             if variable.is_parameter == True:
                 yield variable
 
+    def __contains__(self, item):
+        for var in self.variables:
+            if var.name == item:
+                return True
+
+        return False
+
+    def __getitem__(self, item):
+        for var in self.variables:
+            if var.name == item:
+                return var
+
+        raise KeyError
+
+
+
+
 
 class Class:
     def __init__(self, name, node, functions, member_variables):
@@ -95,6 +112,8 @@ class Table:
 
                 self.classes.append(Class(t.get_name(), node, class_functions, list(map(lambda x: Variable(x), member_variables[t.get_name()]))    ))
 
+    def get_main(self):
+        return self["main"]
 
     def __str__(self):
         s = ""
@@ -114,3 +133,28 @@ class Table:
                 for v in f.variables:
                     s += "        " + str(v) + "\n"
         return s
+
+
+    def __contains__(self, item):
+
+        for func in self.functions:
+            if func.name == item:
+                return True
+
+        for cl in self.classes:
+            if cl.name == item:
+                return True
+
+        return False
+
+    def __getitem__(self, item):
+        for func in self.functions:
+            if func.name == item:
+                return func
+
+        for cl in self.classes:
+            if cl.name == item:
+                return cl
+
+        raise KeyError
+

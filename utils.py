@@ -3,6 +3,7 @@ import symtable
 
 import custom_nodes
 import custom_unparser
+import deduction
 import errors
 import symbol_table
 import sugar
@@ -90,8 +91,8 @@ def analysis(source):
     print("##################################")
     print("Symbol Table")
     print("##################################")
-    #t = symbol_table.Table(my_ast, table)
-    #print(t)
+    t = symbol_table.Table(my_ast, table)
+    print(t)
     print("Symbol table stuff is broken atm come back later")
 
     print("##################################")
@@ -128,6 +129,15 @@ def analysis(source):
 
     mangler.mangler_demanger_test(bodies, True)
 
+    print("All tests passed")
+
+    print("##################################")
+    print("Deduce types")
+    print("##################################")
+
+    deduction.deduce_main(t)
+
+
 
 
 # Function which extracts the names of member variables for all classes in a program
@@ -156,11 +166,8 @@ def resolve_member_variables(_ast: ast.Module):
             for assignment in filter(lambda node : type(node) is ast.Assign, node.body):
                 # Get any assignment target that is an SelfMemberVariable
                 for attribute in filter(lambda node : type(node) is custom_nodes.SelfMemberVariable, assignment.targets):
-                    innermost = get_innermost_attribute(attribute)
 
-                    # if the attribute is of the form self.SOMETHING then the SOMETHING is a member variable
-                    if innermost.value.id == 'self' and type(innermost.value.ctx) is ast.Load:
-                        members.add(innermost.attr)
+                    members.add(attribute.id)
 
         member_mapping[class_node.name] = members
 

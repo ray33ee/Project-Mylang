@@ -123,6 +123,6 @@ class Result(MType):
     def __repr__(self):
         return "Result(" + repr(self.ok_type) + ", " + repr(self.err_type) + ")"
 
-class UserClass:
-    def __init__(self, identifier):
-        self.identifier = identifier
+#class UserClass:
+#    def __init__(self, identifier):
+#        self.identifier = identifier
