@@ -129,6 +129,10 @@
 - Statically typed
 - Python like syntax, Rust like performance (hopefully lol)
 
+## This document
+
+This document is aimed at those wishing to create valid Mylang source code and focuses on the 'what' with little to no mention of the 'why' or the 'how'.
+
 # 2 Structural Typing <a name="structural_typing"></a>
 
 Mylang is structurally typed (think duck typing for static langauges, see [this](https://en.wikipedia.org/wiki/Structural_type_system) for more information) so instead of function arguments taking variables by type, we take variables by what functions they implement.
@@ -452,6 +456,12 @@ Requirements: `iterator` must implement [`__next__`](#__next__)
 
 #### `open` <a name="bf_open"></a>
 
+
+#### `panic(x)`  <a name="bf_panic"></a>
+
+Makes a call to Rust's [panic!](https://doc.rust-lang.org/std/macro.panic.html) converting `x` into a string and displaying this as the panic message. 
+
+Requirements: `x` must implement [`__str__`](#__str__).
 
 #### `path(pathlike)` <a name="bf_path"></a>
 

@@ -3006,3 +3006,5 @@ cFunction("main", ast_node_for_main, [], None)
 ```
 
 Then each cClass and cFunction is converted into generated code by replacing function calls and class names with mangled names, and also replacing certain nodes that can only be resolved during code generation (a.b(), augmented assign, left/right binops)
+
+### To let or not to let

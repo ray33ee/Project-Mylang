@@ -72,10 +72,24 @@ def main():
 
 source = """
 
+class Empty:
+    def __init__():
+        self.y = True
+        self.x = 0
+        
+    def thing():
+        return self.y
+        
+    def __get_y__():
+        return self.y
+    
+
 def main():
     a = True
-    b = float(a)
-    c = int(a)
+    a = float(a)
+    b = Empty()
+    c = b.y
+    d = b.thing()
 
 """
 

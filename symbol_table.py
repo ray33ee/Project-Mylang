@@ -86,6 +86,21 @@ class Class:
         self.node = node
         self.member_variables = member_variables
 
+    def __contains__(self, item):
+
+        for func in self.functions:
+            if func.name == item:
+                return True
+
+        return False
+
+    def __getitem__(self, item):
+        for func in self.functions:
+            if func.name == item:
+                return func
+
+        raise KeyError
+
 # Mylang tables are simpler than python tables, since python allows nested functions, classes, and all sorts of
 # topologies, whereas mylang does not. Mylang can have a list of functions and a list of classes. Each class contains
 # a list of functions. Each function contains a list of variables. This structure is emulated in the Table class:

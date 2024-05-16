@@ -76,8 +76,39 @@ class Mangler:
         pass
 
     def __call__(self, name: Name, body):
-        return "_Z" + name.mangle() + body.mangle()
 
+        if type(name) is str:
+            mangled_name = Name(name).mangle()
+        else:
+            mangled_name = name.mangle()
+        return Mangled("_Z" + mangled_name + body.mangle())
+
+
+
+
+class Mangled:
+
+    def __init__(self, m):
+        self.mangled = m
+
+    def get_name(self):
+        import demangler
+
+        d = demangler.Demangler()
+
+        return d(self.mangled)[0].names[-1]
+
+    def __getitem__(self, item):
+        return self.mangled[item]
+
+    def __hash__(self):
+        return hash(self.mangled)
+
+    def __eq__(self, other: str):
+        return self.mangled == other
+
+    def __str__(self):
+        return str(self.mangled)
 
 
 def mangler_demanger_test(body, verbose=False):

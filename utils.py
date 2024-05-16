@@ -9,6 +9,7 @@ import symbol_table
 import sugar
 import mangler
 import m_types
+from collections import OrderedDict
 from requirements import resolve_function
 
 # Given an expression like a.b.c.d, will return the attribute associated with a
@@ -147,7 +148,8 @@ def resolve_member_variables(_ast: ast.Module):
 
     # Get all the classes in the outermost scope
     for class_node in filter(lambda node : type(node) is ast.ClassDef, _ast.body):
-        members = set()
+        # We use an ordered dict and treat it as an ordered set
+        members = OrderedDict()
 
         # Get the '__init__' function for the class, if it has one
         init = None
@@ -167,8 +169,8 @@ def resolve_member_variables(_ast: ast.Module):
                 # Get any assignment target that is an SelfMemberVariable
                 for attribute in filter(lambda node : type(node) is custom_nodes.SelfMemberVariable, assignment.targets):
 
-                    members.add(attribute.id)
+                    members[attribute.id] = None
 
-        member_mapping[class_node.name] = members
+        member_mapping[class_node.name] = [x for x in members]
 
     return member_mapping
