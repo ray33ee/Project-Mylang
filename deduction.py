@@ -5,7 +5,7 @@ import custom_nodes
 import m_types
 import mangler
 import symbol_table
-
+import ir
 import itertools
 
 # Represents a return value that depends on the type of object. For example, take the `__getitem__` in a vector<T>.
@@ -37,8 +37,8 @@ built_in_returns = {
         "_ZN7__one__EF": m_types.Boolean,
         "_ZN8__zero__EF": m_types.Boolean,
     },
-    "int": {
-
+    m_types.Floating: {
+        "_ZN7__add__EFf": m_types.Floating,
     },
 }
 
@@ -47,6 +47,19 @@ class UserClass:
     def __init__(self, identifier, member_types):
         self.identifier = identifier
         self.member_types = member_types
+
+    def __repr__(self):
+        return f"Class('{self.identifier}', {repr(self.member_types)})"
+
+    def __call__(self):
+        return self
+
+    def mangle(self):
+        mang = mangler.Class([self.member_types[x]() for x in self.member_types], mangler.Name(self.identifier.get_name())).mangle()
+        return mang
+
+
+
 
 # Certain types such as lists, sets and dictionaries take a list of expressions. For these types, every expression in
 # each list must have the same type, T. Here we a) check that all are the same type and b) return the common type. An
@@ -66,10 +79,7 @@ def verify_list(args: list[ast.expr], table, function_table, type_map):
 
 
 
-def deduce_class(class_name: str, constructor_args: list[m_types.MType], table: symbol_table.Table):
-
-    print(class_name)
-    print(constructor_args)
+def deduce_class(class_name: str, constructor_args: list[m_types.MType], table: symbol_table.Table, ir_module: ir.Module, ir_function: ir.Function):
 
     # first we get the class table from the symbol table
     cl = table[class_name]
@@ -77,7 +87,7 @@ def deduce_class(class_name: str, constructor_args: list[m_types.MType], table: 
     # From the class table we obtain the table for the constructor
     init = cl["__init__"]
 
-    type_map, _ = deduce_function(init, constructor_args, table, None)
+    type_map, _ = deduce_function(init, constructor_args, table, None, None, ir_module, ir_function)
 
     members = {}
 
@@ -89,22 +99,25 @@ def deduce_class(class_name: str, constructor_args: list[m_types.MType], table: 
 
     mangled = mangle(mangler.Name(class_name), mangler.Class([members[x]() for x in members]))
 
+    # Add the class to the ir
+    ir_module.add_class(ir.Class(mangled, members))
+
     return UserClass(mangled, members)
 
 # Obtain the return value of the expression and recursively evaluate any function calls
-def deduce_expression(expr: ast.expr, table: symbol_table.Table, function_table: symbol_table.Function, type_map: dict[str, m_types.MType]):
+def deduce_expression(expr: ast.expr, table: symbol_table.Table, function_table: symbol_table.Function, type_map: dict[str, m_types.MType], user_class: UserClass, ir_module: ir.Module, ir_function: ir.Function):
     if type(expr) is custom_nodes.MyCall:
         # Test to see if MyCall represents a global function call or a class construction
         if expr.id in table:
             entry = table[expr.id]
 
             # Get the types of all the arguments in the constructor
-            arg_types = [deduce_expression(x, table, function_table, type_map) for x in expr.args]
+            arg_types = [deduce_expression(x, table, function_table, type_map, user_class, ir_module, ir_function) for x in expr.args]
 
             if type(entry) is symbol_table.Function:
-                return deduce_function(expr.id, arg_types, table)[1]
+                return deduce_function(expr.id, arg_types, table, ir_module, ir_function)[1]
             elif type(entry) is symbol_table.Class:
-                return deduce_class(expr.id, arg_types, table)
+                return deduce_class(expr.id, arg_types, table, ir_module, ir_function)
             else:
                 raise "unreachable"
         else:
@@ -133,7 +146,7 @@ def deduce_expression(expr: ast.expr, table: symbol_table.Table, function_table:
         raise NotImplemented
     elif type(expr) is custom_nodes.MemberFunction:
 
-        return deduce_member_function(expr, table, function_table, type_map)
+        return deduce_member_function(expr, table, function_table, type_map, user_class, ir_module, ir_function)
     elif type(expr) is ast.Name:
         id = expr.id
         if id in type_map:
@@ -142,28 +155,46 @@ def deduce_expression(expr: ast.expr, table: symbol_table.Table, function_table:
             raise "Variable used before declaration"
     elif type(expr) is custom_nodes.SelfMemberVariable:
 
-
-
-        print("typemap")
-        print(type_map)
-
         return type_map["self." + expr.id]
 
     elif type(expr) is custom_nodes.SelfMemberFunction:
+        print(type_map)
+        print(user_class.identifier)
+        return deduce_self_member_function(expr, table, function_table, type_map, user_class, ir_module, ir_function)
         raise NotImplemented
 
 
+def deduce_generic_member(table: symbol_table.Table, function_table: symbol_table.Function, type_map, variant):
+
+    # When dealing with member functions we have two cases.
+    # a) self.member_function(...)
+    # b) expression.member_function(...)
+    # The user must supply different arguments depending on the case:
+    # For self member functions we need:
+    # - The 'type' of self, i.e. a UserClass
+    # And for expression based member functions we need:
+    # - A MemberFunction node
+    # And in either case we need:
+    # - A list of arguments
+    # - the type of either self or the expression
+
+    if variant == "self":
+        # self.member_function(...)
+        pass
+    elif variant == "expr":
+        # expression.member_function(...)
+        # In this case we perform the built-in member function check
+        pass
+
+    pass
+
+def deduce_member_function(node: custom_nodes.MemberFunction, table: symbol_table.Table, function_table: symbol_table.Function, type_map: dict[str, m_types.MType], user_class, ir_module: ir.Module, ir_function: ir.Function):
 
 
-def deduce_member_function(node: custom_nodes.MemberFunction, table: symbol_table.Table, function_table: symbol_table.Function, type_map: dict[str, m_types.MType]):
 
+    expression_type = deduce_expression(node.exp, table, function_table, type_map, user_class, ir_module, ir_function)
 
-
-    expression_type = deduce_expression(node.exp, table, function_table, type_map)
-
-    args_type = [deduce_expression(x, table, function_table, type_map)() for x in node.args]
-
-    print(expression_type)
+    args_type = [deduce_expression(x, table, function_table, type_map, user_class, ir_module, ir_function)() for x in node.args]
 
     if type(expression_type) is not UserClass:
         if expression_type in built_in_returns:
@@ -175,42 +206,66 @@ def deduce_member_function(node: custom_nodes.MemberFunction, table: symbol_tabl
             if identifier in built_in_returns[expression_type]:
                 return built_in_returns[expression_type][identifier]
             else:
+                print(identifier)
                 raise "Built in return type not in built_in_returns map"
         else:
 
-
+            print(expression_type)
 
             raise "Built in return type not in built_in_returns map"
     else:
 
         mangled_name = expression_type.identifier
-        member_variables = expression_type.member_types
 
-        print("name")
+        m = mangler.Mangler()
+
+        print("t")
         print(mangled_name)
-        print(type(mangled_name))
 
-        print("member types")
-        print(member_variables)
+        identifier = m(mangler.Name(node.id), mangler.Function(args_type))
 
-        print("member function")
-        print(node.id)
+        ir_function = ir.Function(identifier)
 
-        print("member function table")
-        print(table[mangled_name.get_name()][node.id])
+        print(ir_function)
 
-        a, ret_type = deduce_function(table[mangled_name.get_name()][node.id], args_type, table, expression_type.member_types)
 
-        print("a")
-        print(a)
+        a, ret_type = deduce_function(table[mangled_name.get_name()][node.id], args_type, table, expression_type.member_types, expression_type, ir_module, ir_function)
 
-        print("return type")
-        print(ret_type)
+        ir_module.add_member_function(mangled_name, ir_function)
 
         return ret_type
 
 
-def deduce_function(function_table: symbol_table.Function, args: dict[str, m_types.MType], table: symbol_table.Table, member_vars: [str, m_types.MType]):
+def deduce_self_member_function(node: custom_nodes.SelfMemberFunction, table: symbol_table.Table, function_table: symbol_table.Function, type_map: dict[str, m_types.MType], user_class: UserClass, ir_module: ir.Module, ir_function: ir.Function):
+    expression_type = user_class
+
+    args_type = [deduce_expression(x, table, function_table, type_map, user_class, ir_module)() for x in node.args]
+
+    mangled_name = expression_type.identifier
+
+    m = mangler.Mangler()
+
+    identifier = m(mangler.Name(node.id), mangler.Function(args_type))
+
+    ir_function = ir.Function(identifier)
+
+    print("if")
+    print(mangled_name)
+    print(ir_function)
+
+    ir_module.add_member_function(mangled_name, ir_function)
+    print(ir_module)
+
+    a, ret_type = deduce_function(table[mangled_name.get_name()][node.id], args_type, table,
+                                  expression_type.member_types, expression_type, ir_module, ir_function)
+
+    return ret_type
+
+
+
+
+
+def deduce_function(function_table: symbol_table.Function, args: dict[str, m_types.MType], table: symbol_table.Table, member_vars: [str, m_types.MType], user_class: UserClass, ir_module: ir.Module, ir_function: ir.Function):
 
     func = function_table.ast_node
 
@@ -225,54 +280,63 @@ def deduce_function(function_table: symbol_table.Function, args: dict[str, m_typ
         # First we get a list of names of the parameters in order:
         params = [x.arg for x in function_table.ast_node.args.args]
 
-        print("Params")
-        print(params)
-
         assert len(params) == len(args)
 
         for id, mtype in zip(params, args):
             type_map[id] = mtype
 
-        print(type_map)
+
 
     if member_vars:
         for m in member_vars:
             type_map[m] = member_vars[m]
-
-    print("function - typemap")
-    print(type_map)
 
 
     # Dictionary mapping variable names to types. First we add the function args to this list
 
 
     for stmt in func.body:
-        print(ast.dump(stmt))
         if type(stmt) is ast.Assign:
-            rhs = deduce_expression(stmt.value, table, function_table, type_map)
+            rhs = deduce_expression(stmt.value, table, function_table, type_map, user_class, ir_module, ir_function)
 
             if type(stmt.targets[0]) is ast.Name:
                 type_map[stmt.targets[0].id] = rhs
             elif type(stmt.targets[0]) is custom_nodes.SelfMemberVariable:
                 type_map["self." + stmt.targets[0].id] = rhs
 
-        if type(stmt) is ast.Return:
+        elif type(stmt) is ast.Return:
 
             if stmt:
-                return_type_set.add(deduce_expression(stmt.value, table, function_table, type_map))
+                a= deduce_expression(stmt.value, table, function_table, type_map, user_class, ir_module, ir_function)
+
+                return_type_set.add(a)
             else:
                 raise "WE don't have a way to deal with void/() types yet. SHould probs work on that lol"
+        elif type(stmt) is ast.Expr:
+            raise NotImplemented
 
+    if len(return_type_set) == 0:
+        ret_type = None
+    elif len(return_type_set) == 1:
+        ret_type = list(return_type_set)[0]
+    else:
+        raise "Functions must have one return type"
 
-    return type_map, return_type_set
+    return type_map, ret_type
 
 def deduce_main(table: symbol_table.Table):
 
+    ir_module = ir.Module()
+
     func_table = table["main"]
 
-    type_map, _ = deduce_function(func_table, {}, table, None)
+    type_map, _ = deduce_function(func_table, {}, table, None, None, ir_module, None)
 
-    print(type_map)
+
+    for key in type_map:
+        print(f"'{key}': {type_map[key]}")
+
+    print(repr(ir_module))
 
 
 '_ZN8__bool__EF'

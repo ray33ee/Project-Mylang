@@ -72,32 +72,40 @@ def main():
 
 source = """
 
-class Empty:
-    def __init__():
-        self.y = True
-        self.x = 0
+class Complex:
+    def __init__(r, i):
+        self.real = r
+        self.imag = i
         
-    def thing():
-        return self.y
+    def __get_real__():
+        return self.real
         
-    def __get_y__():
-        return self.y
+    def __get_imag__():
+        return self.imag
+        
+    def __real__():
+        return self.real
+        
+    def __imag__():
+        return self.imag
+    
+    def __add__(other):
+        return Complex(real(self) + real(other), imag(self) + imag(other))
     
 
 def main():
-    a = True
-    a = float(a)
-    b = Empty()
-    c = b.y
-    d = b.thing()
+    a = Complex(1.0, 2.0)
+    b = Complex(0.5, 3.0)
+    c = Complex(1, 2.0)
+    d = a + b
 
 """
+
+m = mangler.Mangler()
+
+print(m(mangler.Name("__add__"), mangler.Function([m_types.Floating()])))
 
 table = symtable.symtable(source, "", "exec")
 
 utils.analysis(source)
 
-
-m = mangler.Mangler()
-
-print(m(mangler.Name("f"), mangler.Function([m_types.String()])))

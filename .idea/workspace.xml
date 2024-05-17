@@ -5,16 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c1fda6ab-47a6-4007-8920-4e02dc3f5603" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/ir.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Mylang.md" beforeDir="false" afterPath="$PROJECT_DIR$/Mylang.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/deduction.py" beforeDir="false" afterPath="$PROJECT_DIR$/deduction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ir.py" beforeDir="false" afterPath="$PROJECT_DIR$/ir.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/m_types.py" beforeDir="false" afterPath="$PROJECT_DIR$/m_types.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mangler.py" beforeDir="false" afterPath="$PROJECT_DIR$/mangler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/specs.md" beforeDir="false" afterPath="$PROJECT_DIR$/specs.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/symbol_table.py" beforeDir="false" afterPath="$PROJECT_DIR$/symbol_table.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

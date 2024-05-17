@@ -5,6 +5,10 @@ class MType:
     def mangle(self) -> str:
         pass
 
+    def __hash__(self):
+        print("Custom hash baby!")
+        return hash(self.mangle())
+
 class Boolean(MType):
 
     def mangle(self):

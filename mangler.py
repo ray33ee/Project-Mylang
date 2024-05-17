@@ -110,6 +110,9 @@ class Mangled:
     def __str__(self):
         return str(self.mangled)
 
+    def __repr__(self):
+        return repr(self.mangled)
+
 
 def mangler_demanger_test(body, verbose=False):
 
