@@ -6,8 +6,10 @@ class MType:
         pass
 
     def __hash__(self):
-        print("Custom hash baby!")
         return hash(self.mangle())
+
+    def __eq__(self, other):
+        return self.mangle() == other.mangle()
 
 class Boolean(MType):
 

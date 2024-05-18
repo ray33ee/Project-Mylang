@@ -6,6 +6,12 @@ class Expression:
     pass
 
 
+class GlobalFunctionCall(Expression):
+    def __init__(self, id, args):
+        self.id = id
+        self.args = args
+
+
 class SolitarySelf(Expression):
     pass
 

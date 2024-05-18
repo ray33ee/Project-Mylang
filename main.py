@@ -101,11 +101,35 @@ def main():
 
 """
 
-m = mangler.Mangler()
+source = """
 
-print(m(mangler.Name("__add__"), mangler.Function([m_types.Floating()])))
+class Test:
+    def __init__():
+        self.x = 0
+        
+    def __get_x__():
+        return self.x
+
+def main():
+    t = Test()
+    t.x
+
+"""
+
+d = {m_types.Floating(): 1}
+print(m_types.Floating() in d)
+
+print(hash(m_types.Floating))
+print(hash(m_types.Floating))
+print(hash(m_types.Floating))
+
+print(mangler.Mangle("__add__", mangler.Function([m_types.Floating()])))
 
 table = symtable.symtable(source, "", "exec")
 
 utils.analysis(source)
 
+hash(m_types.Integer())
+
+
+print(m_types.Floating() in d)

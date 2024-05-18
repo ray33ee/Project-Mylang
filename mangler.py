@@ -55,6 +55,7 @@ class Class(MType):
             mang = ""
 
         for field in self.fields:
+            print(field)
             mang = mang + field.mangle()
 
         return "C" + str(len(mang)) + mang
@@ -69,49 +70,48 @@ class Class(MType):
 
 
 
-# Take a name (as a list of namespaces to allow scoped name) and a body (as either a function or a class) and
-# produce a mangled string identifier
-class Mangler:
-    def __init__(self):
-        pass
+class Mangle:
+    def __init__(self, *args):
+        if len(args) == 1:
+            s = args[0]
+            if type(s) is not str:
+                raise "Single argument constructor must contain a string"
+            self.mangled_string = s
+            d = demangler.Demangler()
+            self.name, self.body = d(s)
+        elif len(args) == 2:
+            n = args[0]
+            b = args[1]
 
-    def __call__(self, name: Name, body):
+            if type(n) is str:
+                mangled_name = Name(n).mangle()
+            else:
+                mangled_name = n.mangle()
 
-        if type(name) is str:
-            mangled_name = Name(name).mangle()
+            self.mangled_string = "_Z" + mangled_name + b.mangle()
+            self.name = n
+            self.body = b
+
         else:
-            mangled_name = name.mangle()
-        return Mangled("_Z" + mangled_name + body.mangle())
-
-
-
-
-class Mangled:
-
-    def __init__(self, m):
-        self.mangled = m
+            raise "Only accepts 1 or 2 args"
 
     def get_name(self):
-        import demangler
-
-        d = demangler.Demangler()
-
-        return d(self.mangled)[0].names[-1]
+        return self.name.names[-1]
 
     def __getitem__(self, item):
-        return self.mangled[item]
+        return self.mangled_string[item]
 
     def __hash__(self):
-        return hash(self.mangled)
+        return hash(self.mangled_string)
 
     def __eq__(self, other: str):
-        return self.mangled == other
+        return self.mangled_string == other
 
     def __str__(self):
-        return str(self.mangled)
+        return str(self.mangled_string)
 
     def __repr__(self):
-        return repr(self.mangled)
+        return repr(self.mangled_string)
 
 
 def mangler_demanger_test(body, verbose=False):
@@ -122,14 +122,10 @@ def mangler_demanger_test(body, verbose=False):
     else:
         identifier = Name("test")
 
-        m = Mangler()
+        mangled = Mangle(identifier, body)
+        demangled = Mangle(str(mangled))
 
-        mangled = m(identifier, body)
-
-
-        d = demangler.Demangler()
-
-        _, bod = d(mangled)
+        bod = demangled.body
 
         if verbose:
             print("Body:      " + repr(body))
