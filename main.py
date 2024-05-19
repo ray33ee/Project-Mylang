@@ -1,5 +1,7 @@
 import symtable
 import ast
+
+import sugar_v
 import utils
 import sugar
 import errors
@@ -105,31 +107,27 @@ source = """
 
 class Test:
     def __init__():
-        self.x = 0
+        pass
         
-    def __get_x__():
-        return self.x
-
-def main():
-    t = Test()
-    t.x
+    def me():
+        return self
+        
+    def thing():
+        self[0] = e
 
 """
 
-d = {m_types.Floating(): 1}
-print(m_types.Floating() in d)
-
-print(hash(m_types.Floating))
-print(hash(m_types.Floating))
-print(hash(m_types.Floating))
 
 print(mangler.Mangle("__add__", mangler.Function([m_types.Floating()])))
 
-table = symtable.symtable(source, "", "exec")
+# utils.analysis(source)
 
-utils.analysis(source)
+parsed = ast.parse(source, mode='exec')
 
-hash(m_types.Integer())
+print(ast.dump(parsed, indent=4))
 
+sugared = sugar_v.sugar(parsed)
 
-print(m_types.Floating() in d)
+print(ast.dump(sugared, indent=4))
+
+print(custom_unparser.unparse(sugared))
