@@ -1,9 +1,9 @@
 import symtable
 import ast
 
+import members
 import sugar_v
 import utils
-import sugar
 import errors
 import symbol_table
 import custom_unparser
@@ -107,7 +107,7 @@ source = """
 
 class Test:
     def __init__():
-        pass
+        self.x = 0
         
     def me():
         return self
@@ -115,19 +115,14 @@ class Test:
     def thing():
         self[0] = e
 
+def main():
+    t = Test()
+    
+    
+
 """
 
 
 print(mangler.Mangle("__add__", mangler.Function([m_types.Floating()])))
 
-# utils.analysis(source)
-
-parsed = ast.parse(source, mode='exec')
-
-print(ast.dump(parsed, indent=4))
-
-sugared = sugar_v.sugar(parsed)
-
-print(ast.dump(sugared, indent=4))
-
-print(custom_unparser.unparse(sugared))
+utils.analysis(source)

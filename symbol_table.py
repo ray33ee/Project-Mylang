@@ -1,8 +1,29 @@
 import ast
 import symtable
 
+import errors
+import members
 import utils
 
+
+
+# Get a list of all globals, i.e. all top level nodes - currently this is a tuple of a dictionary of
+# name-function node pairs, and a dictionary of name-class node pairs,
+def get_globals(_ast: ast.Module):
+    functions = {}
+    classes = {}
+
+    for node in _ast.body:
+        if type(node) is ast.FunctionDef:
+            functions[node.name] = node
+        if type(node) is ast.ClassDef:
+            functions = {}
+            for f in node.body:
+                if type(f) is ast.FunctionDef:
+                    functions[f.name] = f
+            classes[node.name] = (node, functions)
+
+    return functions, classes
 
 # Signifies the location of a variable to exist on the stack
 class StackVariable:
@@ -51,7 +72,11 @@ class Function:
 
         for t in table.get_symbols():
             if type(t) is symtable.Symbol:
-                self.variables.append(Variable(t.get_name()))
+                # Only add variable symbols, not function calls
+                if t.is_local():
+                    print(t.get_name())
+                    print(t.is_local())
+                    self.variables.append(Variable(t.get_name()))
 
     def __str__(self):
         return f"{self.name} {self.ast_node} {self.variables}"
@@ -109,9 +134,11 @@ class Table:
         self.functions = []
         self.classes = []
 
-        function_nodes, class_nodes = utils.get_globals(_ast)
+        function_nodes, class_nodes = get_globals(_ast)
 
-        member_variables = utils.resolve_member_variables(_ast)
+        member_variables = members.resolve_members(_ast)
+
+        print(member_variables)
 
         for t in table.get_children():
             if type(t) is symtable.Function:
@@ -127,8 +154,14 @@ class Table:
 
                 self.classes.append(Class(t.get_name(), node, class_functions, list(map(lambda x: Variable(x), member_variables[t.get_name()]))    ))
 
+
+
+
     def get_main(self):
-        return self["main"]
+        try:
+            return self["main"]
+        except KeyError:
+            raise errors.MainFunctionMissing()
 
     def __str__(self):
         s = ""

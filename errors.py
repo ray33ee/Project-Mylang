@@ -39,3 +39,8 @@ class ChainedAssignmentNotImplemented(Exception):
 class InvalidTopLevelNodeException(Exception):
     def __str__(self):
         return "Invalid top level node. Only functions or classes are allowed as top level nodes"
+
+
+class MainFunctionMissing(Exception):
+    def __str__(self):
+        return "Source does not contain a main function"
