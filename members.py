@@ -1,6 +1,7 @@
 import ast
 from collections import OrderedDict
 
+import custom_nodes
 import errors
 
 
@@ -64,12 +65,9 @@ class Members(ast.NodeVisitor):
     def visit_Call(self, node):
         pass
 
-    def visit_Attribute(self, node):
+    def visit_SelfMemberVariable(self, node):
         # If we are looking at an assignment in a class constructor
         if self.working_class and self.working_function.name == "__init__" and self.assigning:
-            # If the node is a self.SOMETHING
-            if isinstance(node.value, ast.Name):
-                if node.value.id == "self":
-                    self.map[self.working_class.name][node.attr] = None
+            self.map[self.working_class.name][node.id] = None
 
 

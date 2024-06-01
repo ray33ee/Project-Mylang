@@ -138,6 +138,7 @@ class Table:
 
         member_variables = members.resolve_members(_ast)
 
+        print("mem")
         print(member_variables)
 
         for t in table.get_children():

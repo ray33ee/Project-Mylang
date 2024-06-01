@@ -105,20 +105,29 @@ def main():
 
 source = """
 
-class Test:
+class Turnip:
     def __init__():
-        self.x = 0
+        self.t = 1
+
+class Test:
+    def __init__(x):
+        self.y = x
+        self.z = True
+        self.b = Turnip()
         
-    def me():
-        return self
+    def thingy():
+        return self.y()
+    
+    def __get_y__():
+        return self.y
         
-    def thing():
-        self[0] = e
+    def y():
+        return self.y
 
 def main():
-    t = Test()
-    
-    
+    a = 4.5
+    d = Test(a)
+    b = d.thingy()
 
 """
 
