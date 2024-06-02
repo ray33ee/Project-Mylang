@@ -127,11 +127,26 @@ class Test:
 def main():
     a = 4.5
     d = Test(a)
-    b = d.thingy()
+    b = e = d.thingy()
 
 """
 
 
+def flatten(l):
+    r = []
+    if type(l) is list:
+        for item in l:
+            r.extend(flatten(item))
+        return r
+    else:
+        return [l]
+
+print(flatten([[[[[2]]]]]))
+print(flatten([1, 2, 3]))
+print(flatten([1, [2], 3]))
+print(flatten([1, [2, 2.1, 2.2, 2.5], 3]))
+
 print(mangler.Mangle("__add__", mangler.Function([m_types.Floating()])))
 
 utils.analysis(source)
+

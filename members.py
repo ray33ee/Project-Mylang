@@ -23,6 +23,8 @@ class Members(ast.NodeVisitor):
         return {key: list(value) for key, value in self.map.items()}
 
 
+
+
     def traverse(self, node):
         if isinstance(node, list):
             for n in node:
@@ -53,13 +55,16 @@ class Members(ast.NodeVisitor):
 
             self.map[self.working_class.name] = OrderedDict()
 
+            for s in node.body:
+                print(s)
+
             self.traverse(node.body)
 
             self.working_function = None
 
-    def visit_Assign(self, node):
+    def visit_MonoAssign(self, node):
         self.assigning = True
-        self.traverse(node.targets)
+        self.traverse(node.target)
         self.assigning = False
 
     def visit_Call(self, node):

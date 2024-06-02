@@ -48,6 +48,12 @@ class _Unparser(ast._Unparser):
                     comma = True
                 self.traverse(a)
 
+    def visit_MonoAssign(self, node):
+        self.fill()
+        self.traverse(node.target)
+        self.write(" = ")
+        self.traverse(node.value)
+
 def unparse(ast_obj):
     unparser = _Unparser()
     return unparser.visit(ast_obj)

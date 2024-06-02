@@ -71,17 +71,16 @@ class Translator(ast.NodeVisitor):
     def visit_FunctionDef(self, node):
         self.traverse(node.body)
 
-    def visit_Assign(self, node):
+    def visit_MonoAssign(self, node):
 
         r_value_type = self.traverse(node.value)
 
-        for target in node.targets:
-            if isinstance(target, ast.Name):
-                self.function_stack.peek()[target.id] = r_value_type
-            elif isinstance(target, custom_nodes.SelfMemberVariable):
-                self.function_stack.peek()["self." + target.id] = r_value_type
-            else:
-                raise NotImplemented
+        if isinstance(node.target, ast.Name):
+            self.function_stack.peek()[node.target.id] = r_value_type
+        elif isinstance(node.target, custom_nodes.SelfMemberVariable):
+            self.function_stack.peek()["self." + node.target.id] = r_value_type
+        else:
+            raise NotImplemented
 
 
 

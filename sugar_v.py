@@ -1,10 +1,54 @@
 import ast
 
 import custom_nodes
+import mangler
+import base64
+
+
+# Used by chained assignments to unique variable names which follows some rules:
+# 1. Mangled variables must not conflict with any user created names
+# 2. Mangled variables must not conflict with any other mangled variables
+class VariableMangler:
+    def __init__(self):
+        # Every time we create a new variable we increment the index and use it in the name to guarantee uniqueness with
+        # other temporary variables
+        self.index = 0
+
+        # Set of variables (both user defined and created by this mangler) which we use to avoid conflicts
+        self.taken_names = set()
+
+    # When either a new variable is manged or we come across a new variable, we must register it
+    def register_variable(self, name):
+        self.taken_names.add(name)
+
+    # Take the taken names set and use the names to create a unique-ish salt. Probably overkill, but adds
+    # a bit more uniqueness than self.index alone.
+
+    # I think this function is a bit overkill so I'm disabling it (by returning "") but keeping it just in case
+    def get_salt(self):
+        return ""
+        return str(hash(str(self.taken_names)))
+
+    def get_variable(self):
+        # Keep trying to make a variable until we have a unique name
+        n = ""
+        while True:
+            n = self.mangled()
+
+            if n not in self.taken_names:
+                break
+        # Once we have a unique name, register it
+        self.register_variable(n)
+        return n
+
+    def mangled(self):
+        self.index += 1
+        return "_Z" + mangler.Name("tmp_var_mangd").mangle() + "V" + str(self.index) + "H" + self.get_salt()
 
 
 def sugar(node: ast.AST):
     return _Sugar().visit(node)
+
 
 class _Sugar(ast.NodeTransformer):
 
@@ -15,6 +59,7 @@ class _Sugar(ast.NodeTransformer):
         super().__init__()
         self.working_function = None
         self.working_class = None
+        self.variable_mangler = None
 
 
     # Returns true if the function in self.working_function represents a class constructor
@@ -48,6 +93,15 @@ class _Sugar(ast.NodeTransformer):
         else:
             return super().visit(node)
 
+    def flatten(self, l):
+        r = []
+        if type(l) is list:
+            for item in l:
+                r.extend(self.flatten(item))
+            return r
+        else:
+            return [l]
+
     # Chooses between a MemberFunction and SelfMemberFuncton
     def member_function(self, expr: ast.expr, id: str, args):
         if isinstance(expr, ast.Name):
@@ -59,8 +113,11 @@ class _Sugar(ast.NodeTransformer):
 
     def visit_FunctionDef(self, node):
         self.working_function = node
-        f = ast.FunctionDef(node.name, node.args, self.traverse(node.body), node.decorator_list, node.returns, node.type_comment, node.type_params)
+        self.variable_mangler = VariableMangler()
+
+        f = ast.FunctionDef(node.name, node.args, self.flatten(self.traverse(node.body)), node.decorator_list, node.returns, node.type_comment, node.type_params)
         ast.fix_missing_locations(f)
+        self.variable_mangler = None
         self.working_function = None
         return f
 
@@ -101,27 +158,102 @@ class _Sugar(ast.NodeTransformer):
         if isinstance(node.value, ast.expr):
             return self.member_function(node.value, f"__get_{node.attr}__", [])
 
+
     def visit_Assign(self, node):
-        # We don't support chained assignment just yet
-        assert len(node.targets) == 1
 
-        # get LHS
-        lhs = node.targets[0]
+        # First we note that all Mylang assignments can be written in the form
 
-        if isinstance(lhs, ast.Attribute):
-            if not self.function_is_class_init() and not self.function_is_getter_or_setter(lhs.attr):
-                #a.b = e
-                # a.__set_b__(e)
-                return ast.Expr(self.member_function(lhs.value, f"__set_{lhs.attr}__", [node.value]))
-        if isinstance(lhs, ast.Subscript):
-            # convert a[b] = c into a.__setitem__(b, c)
-            return ast.Expr(self.member_function(lhs.value, "__setitem__", [lhs.slice, node.value]))
+        # a_1 = a_2 = ... = a_n = b_1[...] = b_2[...] = ... = b_m[...] = expr
 
+        # where a_i are named variables and b_i[...] are subscript assignments.
 
-        a = ast.Assign([self.traverse(lhs)], self.traverse(node.value), node.type_comment)
-        ast.fix_missing_locations(a)
+        # The subscript assignments must be replaced with b_i.__setitem__(..., e).
 
-        return a
+        # We must convert the single statement above into multiple statements.
+
+        # Note: A special case of the above form is when n=1 and m=0 or n=0 and m=1, i.e. only one target in the
+        # assignment and this is handled on its own
+
+        # First, unless we have the special case, we create a mangled temporary variable name and assign 'expr' to it:
+
+        # v = expr
+
+        # Then we create 'n' assignments:
+
+        # a_1 = v
+        # a_2 = v
+        # ...
+        # a_n = v
+
+        # Then we create 'm' __setitem__ calls:
+
+        # b_1.__setitem__(..., v)
+        # b_2.__setitem__(..., v)
+        # ...
+        # b_m.__setitem__(..., v)
+
+        if len(node.targets) == 1:
+
+            # If we have a single, non-chained assignment we can easily convert this into a MonoAssign
+
+            target = node.targets[0]
+
+            if type(target) is ast.Subscript:
+                n = ast.Expr(custom_nodes.MemberFunction(self.traverse(target.value), "__setitem__",
+                                                [self.traverse(target.slice), self.traverse(node.value)]))
+                ast.fix_missing_locations(n)
+                print(ast.dump(n))
+                return n
+            else:
+                n = custom_nodes.MonoAssign(self.traverse(target), self.traverse(node.value))
+                ast.fix_missing_locations(n)
+                return n
+
+        else:
+
+            # We outline a formal algorithm as follows:
+
+            # 1. Create an empty list, which will represent the list of assignment nodes
+            # 2. Create a mangled variable name
+            # 3. Create an assignment with the temporary variable as the sole target and the expr as the value.
+            # 4. Iterate over each target.
+            #     i. If the target is a Name, add 'Name = v' as an assignment to the list
+            #    ii. If the target is a subscript, add the __setitem__ call to the list
+            # 5. Return the list of nodes
+
+            # 1.
+            assigns = []
+
+            # 2.
+            mangled_name = self.variable_mangler.get_variable()
+
+            # 3.
+            tmp_assigner = custom_nodes.MonoAssign(ast.Name(mangled_name, ast.Store()), self.traverse(node.value))
+
+            ast.fix_missing_locations(tmp_assigner)
+
+            print(mangled_name)
+
+            assigns.append(tmp_assigner)
+
+            # 4.
+
+            for target in node.targets:
+
+                if type(target) is ast.Subscript:
+                    n = ast.Expr(custom_nodes.MemberFunction(self.traverse(target.value), "__setitem__", [self.traverse(target.slice), ast.Name(mangled_name, ast.Store())]))
+                    ast.fix_missing_locations(n)
+                    print(ast.dump(n))
+                    assigns.append(n)
+                else:
+                    n = custom_nodes.MonoAssign(self.traverse(target), ast.Name(mangled_name, ast.Store()))
+                    ast.fix_missing_locations(n)
+                    assigns.append(n)
+                print(ast.dump(target))
+
+            # 5.
+
+            return assigns
 
     def visit_BinOp(self, node):
         binary_op_mapping = {
