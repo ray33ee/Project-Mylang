@@ -78,7 +78,7 @@ class _Sugar(ast.NodeTransformer):
                 fname = self.working_function.name
                 if (fname[:6] == "__get_" or fname[:6] == "__set_") and fname[-2:] == "__":
                     if identifier:
-                        return fname[7:-2] == identifier
+                        return fname[6:-2] == identifier
                     else:
                         return True
         return False
@@ -108,7 +108,6 @@ class _Sugar(ast.NodeTransformer):
             if expr.id == "self" and self.is_in_class():
                 return custom_nodes.SelfMemberFunction(id, self.traverse(args))
         return custom_nodes.MemberFunction(self.traverse(expr), id, self.traverse(args))
-
 
 
     def visit_FunctionDef(self, node):
@@ -202,8 +201,14 @@ class _Sugar(ast.NodeTransformer):
                 n = ast.Expr(custom_nodes.MemberFunction(self.traverse(target.value), "__setitem__",
                                                 [self.traverse(target.slice), self.traverse(node.value)]))
                 ast.fix_missing_locations(n)
-                print(ast.dump(n))
                 return n
+            elif type(target) is ast.Attribute:
+
+                if type(target.value) is ast.Name and (self.function_is_class_init() or self.function_is_getter_or_setter(target.attr)):
+                    if target.value.id == "self":
+                        return custom_nodes.MonoAssign(custom_nodes.SelfMemberVariable(target.attr), self.traverse(node.value))
+
+                return ast.Expr(self.member_function(target.value, f"__set_{target.attr}__", [self.traverse(node.value)]))
             else:
                 n = custom_nodes.MonoAssign(self.traverse(target), self.traverse(node.value))
                 ast.fix_missing_locations(n)
@@ -232,8 +237,6 @@ class _Sugar(ast.NodeTransformer):
 
             ast.fix_missing_locations(tmp_assigner)
 
-            print(mangled_name)
-
             assigns.append(tmp_assigner)
 
             # 4.
@@ -243,13 +246,24 @@ class _Sugar(ast.NodeTransformer):
                 if type(target) is ast.Subscript:
                     n = ast.Expr(custom_nodes.MemberFunction(self.traverse(target.value), "__setitem__", [self.traverse(target.slice), ast.Name(mangled_name, ast.Store())]))
                     ast.fix_missing_locations(n)
-                    print(ast.dump(n))
                     assigns.append(n)
+                elif type(target) is ast.Attribute:
+                    self.member_function(target.value, f"__set_{target.attr}__", [ast.Name(mangled_name, ast.Store())])
+
+                    if type(target.value) is ast.Name and (self.function_is_class_init() or self.function_is_getter_or_setter(target.attr)):
+                        if target.value.id == "self":
+                            assigns.append( custom_nodes.MonoAssign(custom_nodes.SelfMemberVariable(target.attr),
+                                                           ast.Name(mangled_name, ast.Store())))
+                            continue
+
+                    assigns.append( ast.Expr(
+                        self.member_function(target.value, f"__set_{target.attr}__", [ast.Name(mangled_name, ast.Store())])))
+
                 else:
                     n = custom_nodes.MonoAssign(self.traverse(target), ast.Name(mangled_name, ast.Store()))
                     ast.fix_missing_locations(n)
                     assigns.append(n)
-                print(ast.dump(target))
+
 
             # 5.
 
@@ -305,7 +319,7 @@ class _Sugar(ast.NodeTransformer):
         # Replace a in b with b.__contains__(a)
         # Add an extra negate for the Not varieties
         if (op is ast.Is) or (op is ast.IsNot) or (op is ast.In) or (op is ast.NotIn):
-            raise NotImplemented
+            raise NotImplemented()
 
         return self.member_function(left, compare_op_mapping[type(op)],
                                            [right])
@@ -313,7 +327,7 @@ class _Sugar(ast.NodeTransformer):
     def visit_Slice(self, node):
         # replace a slice a:b:c with slice(a, b, c)
         # We need to think about how we will represent 'None' in mylang before we finish this
-        raise NotImplemented
+        raise NotImplemented()
 
 
     def visit_Subscript(self, node):

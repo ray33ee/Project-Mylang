@@ -87,25 +87,25 @@ def process_expr(expr: ast.Expr, symbols):
                         return None
 
     if t is ast.IfExp:
-        raise NotImplemented
+        raise NotImplemented()
     elif t is ast.Dict:
-        raise NotImplemented
+        raise NotImplemented()
     elif t is ast.Set:
-        raise NotImplemented
+        raise NotImplemented()
     elif t is ast.List:
-        raise NotImplemented
+        raise NotImplemented()
     elif t is ast.Compare:
-        raise NotImplemented
+        raise NotImplemented()
     elif t is ast.Call:
         print(ast.dump(expr))
-        raise NotImplemented
+        raise NotImplemented()
     elif t is ast.Constant:
-        raise NotImplemented
+        raise NotImplemented()
     elif t is ast.Name:
-        raise NotImplemented
+        raise NotImplemented()
     else:
         print(ast.dump(expr))
-        raise NotImplemented
+        raise NotImplemented()
 
 
 # Take a single statement from a function
@@ -125,17 +125,17 @@ def process_statement(stmt: ast.stmt, symbols):
 
 
     if t is ast.Assign:
-        raise NotImplemented
+        raise NotImplemented()
     elif t is ast.Return:
-        raise NotImplemented
+        raise NotImplemented()
     elif t is ast.AugAssign:
-        raise NotImplemented
+        raise NotImplemented()
     elif t is ast.For:
-        raise NotImplemented
+        raise NotImplemented()
     elif t is ast.While:
-        raise NotImplemented
+        raise NotImplemented()
     elif t is ast.If:
-        raise NotImplemented
+        raise NotImplemented()
     elif t is ast.Expr:
         # If a statement is an expression, then its return value (if it even has one) is ignored. So we only then recursively look into the expression contents
         return process_expr(stmt.value, symbols)

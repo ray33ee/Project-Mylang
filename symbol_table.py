@@ -98,7 +98,7 @@ class Function:
             if var.name == item:
                 return var
 
-        raise KeyError
+        raise KeyError()
 
 
 
@@ -124,7 +124,7 @@ class Class:
             if func.name == item:
                 return func
 
-        raise KeyError
+        raise KeyError()
 
 # Mylang tables are simpler than python tables, since python allows nested functions, classes, and all sorts of
 # topologies, whereas mylang does not. Mylang can have a list of functions and a list of classes. Each class contains
@@ -205,5 +205,5 @@ class Table:
             if cl.name == item:
                 return cl
 
-        raise KeyError
+        raise KeyError()
 

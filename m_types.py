@@ -11,6 +11,9 @@ class MType:
     def __eq__(self, other):
         return self.mangle() == other.mangle()
 
+    def __next__(self, other):
+        return not self == other
+
 class Boolean(MType):
 
     def mangle(self):
@@ -52,6 +55,18 @@ class ID(MType):
 
     def __repr__(self):
         return "ID"
+
+
+class Tuple(MType):
+
+    def __init__(self, tuple_types):
+        self.tuple_types = tuple_types
+
+    def mangle(self):
+        return "t" + str(len(self.tuple_types)) + "".join(map(lambda x : x.mangle(), self.tuple_types))
+
+    def __repr__(self):
+        return f"Tuple({self.tuple_types})"
 
 
 class Vector(MType):

@@ -55,7 +55,6 @@ class Class(MType):
             mang = ""
 
         for field in self.fields:
-            print(field)
             mang = mang + field.mangle()
 
         return "C" + str(len(mang)) + mang

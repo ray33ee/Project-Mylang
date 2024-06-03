@@ -32,7 +32,10 @@ class FunctionFrame:
         self.symbol_map[key] = value
 
     def __getitem__(self, item):
-        return self.symbol_map[item]
+        try:
+            return self.symbol_map[item]
+        except KeyError:
+            raise errors.VariableUsedBeforeAssignment(item)
 
     def __contains__(self, item):
         return item in self.symbol_map
@@ -53,6 +56,54 @@ class Stack:
 
 
 class Translator(ast.NodeVisitor):
+
+    class HashableList:
+
+        def __init__(self, iterable=[]):
+            self.l = list(iterable)
+
+        def __hash__(self):
+            h = 0
+
+            for item in self.l:
+                h ^= hash(item)
+
+            return h
+
+        def __eq__(self, other):
+            return self.l == other.l
+
+
+    # The following dictionary maps types to another dictionary which itself maps mangled names to their return values
+    built_in_returns = {
+        m_types.Boolean(): {
+            "__bool__": { HashableList(): m_types.Boolean() },
+            "__float__": { HashableList(): m_types.Floating() },
+            "__int__": { HashableList(): m_types.Integer() },
+            "__index__": { HashableList(): m_types.ID() },
+            "__str__": { HashableList(): m_types.String() },
+            "__fmt__": { HashableList(): m_types.String() },
+            "__bytes__": { HashableList(): m_types.Bytes() },
+            "__len__": { HashableList(): m_types.ID() },
+
+            "__hash__": { HashableList(): m_types.Integer() },
+
+            "__real__": { HashableList(): m_types.Floating() },
+            "__imag__": { HashableList(): m_types.Floating() },
+
+            "__one__": { HashableList(): m_types.Boolean() },
+            "__zero__": { HashableList(): m_types.Boolean() },
+        },
+
+        m_types.Floating(): {
+            "__add__": { HashableList([m_types.Floating()]): m_types.Floating() },
+        },
+
+        m_types.Integer(): {
+            "__add__": { HashableList([m_types.Integer()]): m_types.Integer() },
+        },
+    }
+
     def __init__(self, table: symbol_table.Table):
         self.function_stack = Stack()
         self.class_stack = Stack()
@@ -76,11 +127,21 @@ class Translator(ast.NodeVisitor):
         r_value_type = self.traverse(node.value)
 
         if isinstance(node.target, ast.Name):
-            self.function_stack.peek()[node.target.id] = r_value_type
+
+            if node.target.id in self.function_stack.peek():
+                if self.function_stack.peek()[node.target.id] != r_value_type:
+                    node.assign_type = custom_nodes.FirstAssign()
+                    self.function_stack.peek()[node.target.id] = r_value_type
+                else:
+                    node.assign_type = custom_nodes.Reassign()
+            else:
+                node.assign_type = custom_nodes.FirstAssign()
+                self.function_stack.peek()[node.target.id] = r_value_type
+
         elif isinstance(node.target, custom_nodes.SelfMemberVariable):
             self.function_stack.peek()["self." + node.target.id] = r_value_type
         else:
-            raise NotImplemented
+            raise NotImplemented()
 
 
 
@@ -94,13 +155,14 @@ class Translator(ast.NodeVisitor):
         elif isinstance(node.value, str):
             return m_types.String()
         else:
-            raise NotImplemented
+            raise NotImplemented()
 
     def visit_Name(self, node):
         return self.function_stack.peek()[node.id]
 
 
-
+    def visit_Tuple(self, node):
+        return m_types.Tuple(self.traverse(node.elts))
 
     def visit_MyCall(self, node):
         # First we need to find out whether this node represents:
@@ -110,7 +172,7 @@ class Translator(ast.NodeVisitor):
 
         # first we check for any local variables with the name
         if node.id in self.function_stack.peek():
-            raise NotImplemented
+            raise NotImplemented()
             return
 
         if node.id in self.whole_table:
@@ -163,6 +225,7 @@ class Translator(ast.NodeVisitor):
         self.function_stack.peek().return_type = self.traverse(node.value)
 
     def visit_SelfMemberVariable(self, node):
+        print(ast.dump(node))
         return self.class_stack.peek().cls.member_types["self." + node.id]
 
     def visit_SelfMemberFunction(self, node):
@@ -211,7 +274,8 @@ class Translator(ast.NodeVisitor):
 
 
         else:
-            pass
+
+            return self.built_in_returns[ex_type][node.id][self.HashableList(self.traverse(node.args))]
 
         print(ex_type)
         print("Member")

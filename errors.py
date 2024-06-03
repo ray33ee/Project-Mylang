@@ -44,3 +44,12 @@ class InvalidTopLevelNodeException(Exception):
 class MainFunctionMissing(Exception):
     def __str__(self):
         return "Source does not contain a main function"
+
+
+class VariableUsedBeforeAssignment(Exception):
+
+    def __init__(self, variable_id):
+        self.variable_id = variable_id
+
+    def __str__(self):
+        return f"Variable '{self.variable_id}' is used before it is assigned to"

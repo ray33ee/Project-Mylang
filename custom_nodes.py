@@ -46,10 +46,18 @@ class MyCall(ast.AST):
         self.args = args
 
 
+
+class Reassign:
+    pass
+
+class FirstAssign:
+    pass
+
 class MonoAssign(ast.AST):
 
     _fields = ["target", "value"]
-    def __init__(self, target, value):
+    def __init__(self, target, value, assign_type=None):
         super().__init__()
         self.target = target
         self.value = value
+        self.assign_type = assign_type

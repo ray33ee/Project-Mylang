@@ -43,7 +43,7 @@ class Members(ast.NodeVisitor):
 
         # By this point an init function should be found. If not, we raise an error
         if node.name not in self.map:
-            raise errors.ClassMissingInitException
+            raise errors.ClassMissingInitException()
 
         self.working_class = None
 

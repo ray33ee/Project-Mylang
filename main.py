@@ -105,29 +105,31 @@ def main():
 
 source = """
 
-class Turnip:
-    def __init__():
-        self.t = 1
-
-class Test:
-    def __init__(x):
-        self.y = x
-        self.z = True
-        self.b = Turnip()
+class Range:
+    def __init__(start, finish, step):
+        self.i = start
+        self.finish = finish
+        self.step = step
         
-    def thingy():
-        return self.y()
-    
-    def __get_y__():
-        return self.y
+    def __set_i__(i):
+        self.i = a = i
         
-    def y():
-        return self.y
+    def __get_i__():
+        return self.i
+        
+    def __get_step__():
+        return self.step
+        
+    def __next__():
+        r = self.i
+        self.i = self.i + self.step
+        return r
 
 def main():
-    a = 4.5
-    d = Test(a)
-    b = e = d.thingy()
+    r = Range(0, 10, 1)
+    
+    n = next(r)
+    
 
 """
 
@@ -140,11 +142,6 @@ def flatten(l):
         return r
     else:
         return [l]
-
-print(flatten([[[[[2]]]]]))
-print(flatten([1, 2, 3]))
-print(flatten([1, [2], 3]))
-print(flatten([1, [2, 2.1, 2.2, 2.5], 3]))
 
 print(mangler.Mangle("__add__", mangler.Function([m_types.Floating()])))
 
