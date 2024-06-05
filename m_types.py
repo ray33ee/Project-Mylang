@@ -1,3 +1,4 @@
+from collections import OrderedDict
 
 # The following classes represent all the 'types' that Mylang objects can be
 
@@ -16,6 +17,8 @@ class MType:
 
 class Boolean(MType):
 
+    _fields = []
+
     def mangle(self):
         return "b"
 
@@ -24,6 +27,8 @@ class Boolean(MType):
 
 
 class Integer(MType):
+
+    _fields = []
 
     def mangle(self):
         return "i"
@@ -34,6 +39,8 @@ class Integer(MType):
 
 class Char(MType):
 
+    _fields = []
+
     def mangle(self):
         return "c"
 
@@ -42,6 +49,8 @@ class Char(MType):
 
 
 class Floating(MType):
+
+    _fields = []
     def mangle(self):
         return "f"
 
@@ -50,6 +59,8 @@ class Floating(MType):
 
 
 class ID(MType):
+
+    _fields = []
     def mangle(self):
         return "a"
 
@@ -57,7 +68,9 @@ class ID(MType):
         return "ID"
 
 
-class Tuple(MType):
+class Ntuple(MType):
+
+    _fields = ["tuple_types"]
 
     def __init__(self, tuple_types):
         self.tuple_types = tuple_types
@@ -70,6 +83,9 @@ class Tuple(MType):
 
 
 class Vector(MType):
+
+    _fields = ["element_type"]
+
     def __init__(self, element_type: MType):
         self.element_type = element_type
 
@@ -81,6 +97,9 @@ class Vector(MType):
 
 
 class String(MType):
+
+    _fields = []
+
     def mangle(self):
         return "u"
 
@@ -89,6 +108,9 @@ class String(MType):
 
 
 class Bytes(MType):
+
+    _fields = []
+
     def mangle(self):
         return "m"
 
@@ -97,6 +119,9 @@ class Bytes(MType):
 
 
 class Dictionary(MType):
+
+    _fields = ["key_type", "value_type"]
+
     def __init__(self, key_type: MType, value_type: MType):
         self.key_type = key_type
         self.value_type = value_type
@@ -106,10 +131,13 @@ class Dictionary(MType):
 
 
     def __repr__(self):
-        return "Dict(" + repr(self.key_type) + ", " + repr(self.value_type) + ")"
+        return "Dictionary(" + repr(self.key_type) + ", " + repr(self.value_type) + ")"
 
 
 class DynamicSet(MType):
+
+    _fields = ["element_type"]
+
     def __init__(self, element_type: MType):
         self.element_type = element_type
 
@@ -122,6 +150,9 @@ class DynamicSet(MType):
 
 
 class Option(MType):
+
+    _fields = ["contained_type"]
+
     def __init__(self, contained_type: MType):
         self.contained_type = contained_type
 
@@ -134,6 +165,9 @@ class Option(MType):
 
 
 class Result(MType):
+
+    _fields = ["ok_type", "err_type"]
+
     def __init__(self, ok_type: MType, err_type: MType):
         self.ok_type = ok_type
         self.err_type = err_type
@@ -145,3 +179,31 @@ class Result(MType):
         return "Result(" + repr(self.ok_type) + ", " + repr(self.err_type) + ")"
 
 
+# Used when no annotation is provided for a type, and can match any type
+class WildCard:
+
+    _fields = []
+
+    def __repr__(self):
+        return "WildCard"
+
+
+# Represents a code-generated user class complete with mangled name and dictionary of variable names to types
+class UserClass(MType):
+    def __init__(self, identifier, member_types):
+        self.identifier = identifier
+        self.member_types = member_types
+
+    def __repr__(self):
+        return f"Class('{self.identifier}', {repr(self.member_types)})"
+
+
+    def mangle(self):
+        import mangler
+
+        mang = mangler.Name(self.identifier).mangle()
+
+        for field in self.member_types.values():
+            mang = mang + field.mangle()
+
+        return "C" + str(len(mang)) + mang

@@ -55,9 +55,6 @@ class Members(ast.NodeVisitor):
 
             self.map[self.working_class.name] = OrderedDict()
 
-            for s in node.body:
-                print(s)
-
             self.traverse(node.body)
 
             self.working_function = None
@@ -66,9 +63,6 @@ class Members(ast.NodeVisitor):
         self.assigning = True
         self.traverse(node.target)
         self.assigning = False
-
-    def visit_Call(self, node):
-        pass
 
     def visit_SelfMemberVariable(self, node):
         # If we are looking at an assignment in a class constructor

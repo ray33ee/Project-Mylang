@@ -74,8 +74,6 @@ class Function:
             if type(t) is symtable.Symbol:
                 # Only add variable symbols, not function calls
                 if t.is_local():
-                    print(t.get_name())
-                    print(t.is_local())
                     self.variables.append(Variable(t.get_name()))
 
     def __str__(self):
@@ -120,11 +118,14 @@ class Class:
         return False
 
     def __getitem__(self, item):
+
+        funcs = []
+
         for func in self.functions:
             if func.name == item:
-                return func
+                funcs.append(func)
 
-        raise KeyError()
+        return funcs
 
 # Mylang tables are simpler than python tables, since python allows nested functions, classes, and all sorts of
 # topologies, whereas mylang does not. Mylang can have a list of functions and a list of classes. Each class contains
@@ -137,9 +138,6 @@ class Table:
         function_nodes, class_nodes = get_globals(_ast)
 
         member_variables = members.resolve_members(_ast)
-
-        print("mem")
-        print(member_variables)
 
         for t in table.get_children():
             if type(t) is symtable.Function:
@@ -160,7 +158,10 @@ class Table:
 
     def get_main(self):
         try:
-            return self["main"]
+            mains = self["main"]
+            if len(mains) != 1:
+                raise "Too many main functions, source must contain exactly one"
+            return mains[0]
         except KeyError:
             raise errors.MainFunctionMissing()
 
@@ -197,13 +198,16 @@ class Table:
         return False
 
     def __getitem__(self, item):
-        for func in self.functions:
-            if func.name == item:
-                return func
 
         for cl in self.classes:
             if cl.name == item:
                 return cl
 
-        raise KeyError()
+        funcs = []
+
+        for func in self.functions:
+            if func.name == item:
+                funcs.append(func)
+
+        return funcs
 

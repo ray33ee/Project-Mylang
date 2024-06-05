@@ -1,6 +1,7 @@
 import ast
 
 import custom_nodes
+import m_types
 import mangler
 import base64
 
@@ -110,12 +111,100 @@ class _Sugar(ast.NodeTransformer):
         return custom_nodes.MemberFunction(self.traverse(expr), id, self.traverse(args))
 
 
+    def visit_arguments(self, node):
+        a = ast.arguments(args=self.traverse(node.args), posonlyargs=node.posonlyargs, defaults=node.defaults, kwonlyargs=node.kwonlyargs)
+        ast.fix_missing_locations(a)
+
+        return a
+
+
+    def resolve_annotation(self, annotation):
+
+        if not annotation:
+            return m_types.WildCard
+        if type(annotation) is ast.Constant:
+            print(type(annotation.value))
+            if annotation.value == ...:
+                return m_types.WildCard()
+            else:
+                raise "Invalid annotation expression"
+        elif type(annotation) is ast.Tuple:
+            return [self.resolve_annotation(x) for x in annotation.elts]
+        elif type(annotation) is ast.Name:
+            if annotation.id == "int":
+                return m_types.Integer()
+            elif annotation.id == "float":
+                return m_types.Floating()
+            elif annotation.id == "bool":
+                return m_types.Boolean()
+            elif annotation.id == "char":
+                return m_types.Char()
+            elif annotation.id == "id":
+                return m_types.ID()
+            elif annotation.id == "bytes":
+                return m_types.Bytes()
+            elif annotation.id == "str":
+                return m_types.String()
+            elif annotation.id == "list":
+                return m_types.Vector(None)
+            elif annotation.id == "tuple":
+                raise "Tuple must contain types or wildcards. tuple[...] where ... represents a wildcard for any type"
+            elif annotation.id == "dict":
+                return m_types.Dictionary(None, None)
+            elif annotation.id == "set":
+                return m_types.DynamicSet(None)
+            elif annotation.id == "option":
+                return m_types.Option(None)
+            elif annotation.id == "result":
+                return m_types.Result(None, None)
+            else:
+                raise "Argument annotation (Name) not recognised"
+        elif type(annotation) is ast.Subscript:
+
+            if type(annotation.value) is ast.Name:
+                if annotation.value.id == "list":
+                    return m_types.Vector(self.resolve_annotation(annotation.slice))
+                elif annotation.value.id == "tuple":
+                    return m_types.Ntuple(self.resolve_annotation(annotation.slice))
+                elif annotation.value.id == "dict":
+                    return m_types.Dictionary(self.resolve_annotation(annotation.slice.elts[0]), self.resolve_annotation(annotation.slice.elts[1]))
+                elif annotation.value.id == "set":
+                    return m_types.DynamicSet(self.resolve_annotation(annotation.slice))
+                elif annotation.value.id == "option":
+                    return m_types.Option(self.resolve_annotation(annotation.slice))
+                elif annotation.value.id == "result":
+                    return m_types.Result(self.resolve_annotation(annotation.slice.elts[0]), self.resolve_annotation(annotation.slice.elts[1]))
+                else:
+                    raise "Argument annotation (Subscript) not recognised"
+
+            else:
+                raise "Invalid annotation expression"
+
+        else:
+            raise "Annotation type not recognised (not a Name or Subscript)"
+
+
+    def visit_arg(self, node):
+
+        print(ast.dump(node))
+
+
+
+        annotation = self.resolve_annotation(node.annotation)
+
+        arg = ast.arg(arg=node.arg, annotation=annotation)
+
+        ast.fix_missing_locations(arg)
+
+        return arg
+
     def visit_FunctionDef(self, node):
         self.working_function = node
         self.variable_mangler = VariableMangler()
 
-        f = ast.FunctionDef(node.name, node.args, self.flatten(self.traverse(node.body)), node.decorator_list, node.returns, node.type_comment, node.type_params)
+        f = ast.FunctionDef(node.name, self.traverse(node.args), self.flatten(self.traverse(node.body)), node.decorator_list, node.returns, node.type_comment, node.type_params)
         ast.fix_missing_locations(f)
+
         self.variable_mangler = None
         self.working_function = None
         return f
@@ -130,8 +219,8 @@ class _Sugar(ast.NodeTransformer):
     def visit_Call(self, node):
         if isinstance(node.func, ast.Name):
 
-            # Convert float(x) into x.__float__(). More generically, given the function f,
-            # f(x1, x2, ..., xn) maps to x1.__f__(x2, ..., xn)
+            # Convert float(x) into x.__float__(). More generically, given the special function f,
+            # we map f(x1, x2, ..., xn) to x1.__f__(x2, ..., xn)
             if node.func.id in self.built_in_set:
                 # The function must have at least one argument
                 assert len(node.args) != 0

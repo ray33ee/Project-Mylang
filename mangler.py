@@ -1,5 +1,4 @@
-import demangler
-from m_types import MType
+import m_types
 
 # Describes an identifier, such as the name of a function or class.
 # Constructed of a set of strings which represent namespaces, modules, any kind of scoped access
@@ -27,78 +26,9 @@ class Name:
         return s
 
 
-class Function:
-    def __init__(self, args):
-        self.args = args
-
-    def mangle(self):
-        mang = "F"
-
-        for a in self.args:
-            mang = mang + a.mangle()
-
-        return mang
-
-    def __repr__(self):
-        return "Function(" + repr(self.args) + ")"
-
-
-class Class(MType):
-    def __init__(self, fields,  name: Name = None):
-        self.fields = fields
-        self.name = name
-
-    def mangle(self):
-        if self.name:
-            mang = self.name.mangle()
-        else:
-            mang = ""
-
-        for field in self.fields:
-            mang = mang + field.mangle()
-
-        return "C" + str(len(mang)) + mang
-
-    def __repr__(self):
-        if self.name:
-            return "Class('" + repr(self.name) + "', " + repr(self.fields) + ")"
-        else:
-            return "Class(" + repr(self.fields) + ")"
-
-
-
-
-
 class Mangle:
-    def __init__(self, *args):
-        if len(args) == 1:
-            s = args[0]
-            if type(s) is not str:
-                raise "Single argument constructor must contain a string"
-            self.mangled_string = s
-            d = demangler.Demangler()
-            self.name, self.body = d(s)
-        elif len(args) == 2:
-            n = args[0]
-            b = args[1]
-
-            if type(n) is str:
-                mangled_name = Name(n).mangle()
-            else:
-                mangled_name = n.mangle()
-
-            self.mangled_string = "_Z" + mangled_name + b.mangle()
-            self.name = n
-            self.body = b
-
-        else:
-            raise "Only accepts 1 or 2 args"
-
-    def get_name(self):
-        return self.name.names[-1]
-
-    def __getitem__(self, item):
-        return self.mangled_string[item]
+    def __init__(self, obj):
+        self.mangled_string = "_Z" + obj.mangle()
 
     def __hash__(self):
         return hash(self.mangled_string)
@@ -113,27 +43,113 @@ class Mangle:
         return repr(self.mangled_string)
 
 
-def mangler_demanger_test(body, verbose=False):
+def mangler_test_function(obj, verbose=False):
 
-    if type(body) is list:
-        for b in body:
-            mangler_demanger_test(b, verbose)
+    if type(obj) is list:
+        s = set()
+
+        for o in obj:
+            s.add(mangler_test_function(o, verbose))
+
+        # Make sure that every distinct test creates a distinct mangled string
+        return len(s)
     else:
-        identifier = Name("test")
-
-        mangled = Mangle(identifier, body)
-        demangled = Mangle(str(mangled))
-
-        bod = demangled.body
+        mangled = Mangle(obj)
 
         if verbose:
-            print("Body:      " + repr(body))
-            print("Demangled: " + repr(bod))
+            print("Body:      " + repr(obj))
             print("Mangled:   " + str(mangled))
 
+        return mangled
 
 
-        assert repr(bod) == repr(body)
+def run_mangler_tests():
+    import ir
+    from collections import OrderedDict
 
+    # Here we create a bunch of very different and very similar symbols. They are all distinct, so their mangled
+    # names should be different
+    bank1 = [
+        # Same name, same arg types, different number of args
+        ir.FunctionDef("test1", OrderedDict({})),
+        ir.FunctionDef("test1", OrderedDict({"a": m_types.Integer()})),
+        ir.FunctionDef("test1", OrderedDict({"a": m_types.Integer(), "b": m_types.Integer()})),
 
+        # Same name, same number of args, different types
+        ir.FunctionDef("test2", OrderedDict({"a": m_types.Integer()})),
+        ir.FunctionDef("test2", OrderedDict({"a": m_types.Floating()})),
+        ir.FunctionDef("test2", OrderedDict({"a": m_types.Char()})),
+
+        ir.FunctionDef("test3", OrderedDict({"a": m_types.Integer(), "b": m_types.Integer()})),
+
+        # Same name, same number of fields different field types
+        ir.ClassDef("complex", OrderedDict({"real": m_types.Floating(), "imag": m_types.Floating()})),
+        ir.ClassDef("complex", OrderedDict({"real": m_types.Integer(), "imag": m_types.Integer()})),
+
+        ir.ClassDef("complex", OrderedDict({"real": m_types.Integer()})),
+        ir.ClassDef("complex", OrderedDict({"real": m_types.Bytes()})),
+
+        # Make sure that none of the built in types clash
+        ir.FunctionDef("t", OrderedDict({"a": m_types.Boolean()})),
+        ir.FunctionDef("t", OrderedDict({"a": m_types.Integer()})),
+        ir.FunctionDef("t", OrderedDict({"a": m_types.Char()})),
+        ir.FunctionDef("t", OrderedDict({"a": m_types.Floating()})),
+        ir.FunctionDef("t", OrderedDict({"a": m_types.ID()})),
+        ir.FunctionDef("t", OrderedDict({"a": m_types.String()})),
+        ir.FunctionDef("t", OrderedDict({"a": m_types.Bytes()})),
+
+        ir.FunctionDef("t", OrderedDict({"a": m_types.Vector(m_types.Integer())})),
+        ir.FunctionDef("t", OrderedDict({"a": m_types.Vector(m_types.Floating())})),
+        ir.FunctionDef("t", OrderedDict({"a": m_types.Vector(m_types.Vector(m_types.Vector(m_types.Vector(m_types.Floating()))))})),
+
+        ir.FunctionDef("t", OrderedDict({"a": m_types.Option(m_types.Integer())})),
+        ir.FunctionDef("t", OrderedDict({"a": m_types.Option(m_types.String())})),
+
+    ]
+
+    if mangler_test_function(bank1, True) != len(bank1):
+        print("Bank 1 of mangler tests failed")
+        raise "bank 1 failed"
+
+    # Here we copy the same symbol over and over many times. This should collapse to one mangled string
+    # as they are all the same. THis test is important to make sure that the order of symbols in class fields and
+    # function arguments is preserved
+    bank2 = [
+
+        ir.FunctionDef("test4", OrderedDict({"a": m_types.Bytes(), "b": m_types.ID()})),
+        ir.FunctionDef("test4", OrderedDict({"a": m_types.Bytes(), "b": m_types.ID()})),
+        ir.FunctionDef("test4", OrderedDict({"a": m_types.Bytes(), "b": m_types.ID()})),
+        ir.FunctionDef("test4", OrderedDict({"a": m_types.Bytes(), "b": m_types.ID()})),
+        ir.FunctionDef("test4", OrderedDict({"a": m_types.Bytes(), "b": m_types.ID()})),
+        ir.FunctionDef("test4", OrderedDict({"a": m_types.Bytes(), "b": m_types.ID()})),
+        ir.FunctionDef("test4", OrderedDict({"a": m_types.Bytes(), "b": m_types.ID()})),
+        ir.FunctionDef("test4", OrderedDict({"a": m_types.Bytes(), "b": m_types.ID()})),
+        ir.FunctionDef("test4", OrderedDict({"a": m_types.Bytes(), "b": m_types.ID()})),
+        ir.FunctionDef("test4", OrderedDict({"a": m_types.Bytes(), "b": m_types.ID()})),
+        ir.FunctionDef("test4", OrderedDict({"a": m_types.Bytes(), "b": m_types.ID()})),
+
+    ]
+
+    if mangler_test_function(bank2, True) != 1:
+        print("Bank 2 of mangler tests failed")
+        raise "bank 2 failed"
+
+    bank3 = [
+
+        ir.FunctionDef("test5", OrderedDict({"a": m_types.Ntuple([])})),
+        ir.FunctionDef("test5", OrderedDict({"a": m_types.Ntuple([]), "b": m_types.Ntuple([])})),
+        ir.FunctionDef("test5", OrderedDict({"a": m_types.Ntuple([m_types.Bytes()])})),
+        ir.FunctionDef("test5", OrderedDict({"a": m_types.Ntuple([m_types.Floating()])})),
+        ir.FunctionDef("test5", OrderedDict({"a": m_types.Ntuple([m_types.Bytes(), m_types.String()])})),
+
+        ir.FunctionDef("test5", OrderedDict({"a": m_types.Ntuple([m_types.Bytes()]), "b": m_types.Ntuple([m_types.String()])})),
+        ir.FunctionDef("test5", OrderedDict({"a": m_types.Ntuple([m_types.Bytes(), m_types.Ntuple([m_types.String()])])})),
+
+    ]
+
+    if mangler_test_function(bank3, True) != len(bank3):
+        print("Bank 3 of mangler tests failed")
+        raise "bank 3 failed"
+
+    print("All tests passed")
 

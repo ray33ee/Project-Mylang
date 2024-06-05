@@ -1,14 +1,14 @@
 import symtable
 import ast
 
+import ir
 import members
-import sugar_v
+import sugar
 import utils
 import errors
 import symbol_table
 import custom_unparser
 import mangler
-import demangler
 import m_types
 
 source = """
@@ -18,26 +18,27 @@ class Test:
     def __init__():
         self.a = 0
         
-    def __get_a__(self):
-        return self.a
-    
-    def get(self):
+    def __get_a__():
         return self.a
         
-    def set(self, a):
+    def __set_a__(a):
+        self.a = a
+    
+    def get():
+        return self.a
+        
+    def set(a):
         self.a = a
         
-    def test(self):
-        thing(3, 5.0, "Yes", a.b.c)
-        
-    def me(self):
+    def me():
         return self
     
-    def test(self):
+    def test():
         return -a
 
 def main():
-    c = (a+3).b()[5]
+    c = Test()
+    d = c.me()
 """
 
 source = """
@@ -48,13 +49,19 @@ class Complex:
 		self.real = realz
 		self.imag = imagz
 		
-	def __get_real__(self):
+	def __get_real__():
+	    return self.real
+		
+	def __get_imag__():
+	    return self.imag
+	
+	def __real__():
 	    return self.real
 	
-	def __real__(self):
-	    return self.real
+	def __imag__():
+	    return self.imag
 
-	def __add__(self, rhs):
+	def __add__(rhs):
 		return Complex(real(self) + real(rhs), imag(self) + imag(rhs))
 
 
@@ -64,7 +71,7 @@ def main():
 
 	c3 = c2 + c1
 
-	c1 = c1 + 5
+	c4 = c1 + 5
 
 	print(c1)
 	print(c2)
@@ -133,17 +140,32 @@ def main():
 
 """
 
+source = """
 
-def flatten(l):
-    r = []
-    if type(l) is list:
-        for item in l:
-            r.extend(flatten(item))
-        return r
-    else:
-        return [l]
+class Test():
+    def __init__():
+        self.x = f()
+        
+    def __get_x__():
+        return self.x
+        
+    def __call__():
+        return True
 
-print(mangler.Mangle("__add__", mangler.Function([m_types.Floating()])))
+def f():
+    return g(("hello", 3.4))
+
+def g(i):
+    return i
+
+def main():
+    a = Test()
+    x = a.x
+    y = a()
+    b = 4
+    
+    b = b + 4
+
+"""
 
 utils.analysis(source)
-

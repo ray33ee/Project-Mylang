@@ -1,14 +1,26 @@
+import ast
+
+import m_types
+import mangler
+
+from collections import OrderedDict
+
+
 # This module contains classes which together define an intermediate representation created by the translator from
 # mylang source and is itself converted into rust source code.
 
 
-class Expression:
+class Expression(ast.AST):
     pass
 
 
 class GlobalFunctionCall(Expression):
-    def __init__(self, id, args):
-        self.id = id
+
+    _fields = ["id", "args"]
+
+    def __init__(self, _id, args):
+        super().__init__()
+        self.id = _id
         self.args = args
 
 
@@ -16,34 +28,88 @@ class SolitarySelf(Expression):
     pass
 
 class Constant(Expression):
+
+    _fields = ["value"]
+
     def __init__(self, value):
+        super().__init__()
         self.value = value
 
+
 class MemberFunction(Expression):
-    def __init__(self, expr: Expression, id: str, args: list[Expression]):
+
+    _fields = ["expr", "id", "args"]
+
+    def __init__(self, expr: Expression, _id: str, args: list[Expression]):
+        super().__init__()
         self.expr = expr
-        self.id = id
+        self.id = _id
         self.args = args
+
+class SelfFunction(Expression):
+
+    _fields = ["id", "args"]
+
+    def __init__(self, _id: str, args: list[Expression]):
+        super().__init__()
+        self.id = _id
+        self.args = args
+
+class SelfVariable(Expression):
+
+    _fields = ["id"]
+
+    def __init__(self, _id: str):
+        super().__init__()
+        self.id = _id
 
 
 class ClassConstructor(Expression):
+
+    _fields = ["class_name", "args"]
+
     def __init__(self, class_name: str, args: list[Expression]):
+        super().__init__()
         self.class_name = class_name
         self.args = args
 
 
-class Statement:
+class Identifier(Expression):
+
+    _fields = ["id"]
+
+    def __init__(self, _id):
+        super().__init__()
+        self.id = _id
+
+class IRTuple(Expression):
+
+    _fields = ["elements"]
+
+    def __init__(self, elements):
+        super().__init__()
+        self.elements = elements
+
+class Statement(ast.AST):
     pass
 
 
 class IfElse(Statement):
+
+    _fields = ["if_block", "else_block"]
+
     def __init__(self, if_block: list[Statement], else_block: list[Statement] = None):
+        super().__init__()
         self.if_block = if_block
         self.else_block = else_block
 
 
 class Return(Statement):
+
+    _fields = ["expr"]
+
     def __init__(self, expr: Expression):
+        super().__init__()
         self.expr = expr
 
 
@@ -54,11 +120,19 @@ class LetAssign(Statement):
 class Reassign(Statement):
     pass
 
-class Function:
-    def __init__(self, name):
+class FunctionDef(ast.AST):
+
+    _fields = ["name", "body", "ret_type", "args"]
+
+    def __init__(self, name, args):
+        super().__init__()
         self.name = name
         self.body = []
         self.ret_type = None
+
+        # Must be an ordered dict mapping arg names to arg types
+        assert type(args) is OrderedDict
+        self.args = args
 
     def add_statement(self, statement: Statement):
         self.body.append(statement)
@@ -67,43 +141,52 @@ class Function:
         self.ret_type = ret_type
 
     def __repr__(self):
-        return f"Function(name='{self.name}', body={self.body})"
+        return f"Function(name='{self.name}', args={self.args}, body={self.body})"
+
+    def mangle(self):
+        mang = mangler.Name(self.name).mangle()
+
+        for a in self.args.values():
+            mang = mang + a.mangle()
+
+        return "F" + str(len(mang)) + mang
 
 
-class Class:
+class ClassDef(ast.AST):
+
+    _fields = ["name", "member_map", "functions"]
+
     def __init__(self, name, member_map):
+        super().__init__()
         self.name = name
-        self.member_map = member_map
-        self.functions = {}
 
-    def add_function(self, function: Function):
-        self.functions[function.name] = function
+        # Must be an ordered dict mapping agr names to types
+        self.member_map = member_map
+        self.functions = []
+
+    def add_function(self, function: FunctionDef):
+        self.functions.append(function)
 
     def __repr__(self):
         return f"Class('{self.name}', {self.member_map}, {repr(self.functions)})"
 
-class Module:
+    def mangle(self):
+        # Here we leverage the UserClass mangling to do our work for us
+        return m_types.UserClass(self.name, self.member_map).mangle()
+
+
+
+class Module(ast.AST):
     def __init__(self):
-        self.functions = {}
-        self.classes = {}
+        super().__init__()
+        self.functions = []
+        self.classes = []
 
-    def add_function(self, function: Function):
-        if function.name not in self.functions:
-            self.functions[function.name] = function
+    def add_function(self, function: FunctionDef):
+        self.functions.append(function)
 
-    def add_class(self, cl: Class):
-        if cl.name not in self.classes:
-            self.classes[cl.name] = cl
-
-    def add_member_function(self, class_name, function: Function):
-
-        self.classes[class_name].add_function(function)
-
-    def get_class(self, name):
-        return self.classes[name]
-
-    def rustify(self, level=0, indent=4):
-        pass
+    def add_class(self, cl: ClassDef):
+        self.classes.append(cl)
 
     def __repr__(self):
         return f"Module(functions={repr(self.functions)}, classes={repr(self.classes)})"
