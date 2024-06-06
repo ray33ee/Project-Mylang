@@ -136,6 +136,7 @@ def main():
     r = Range(0, 10, 1)
     
     n = next(r)
+    n_1 = next(r)
     
 
 """
@@ -162,9 +163,46 @@ def main():
     a = Test()
     x = a.x
     y = a()
+    a = Test()
+    a = 55
     b = 4
     
     b = b + 4
+    
+    u = g(1)
+    v = g(2)
+    l = g(3.4)
+
+"""
+
+source = """
+
+def f(x):
+    return x
+    
+def main():
+    a = f(1)
+    b = f(2)
+    c = f(True)
+
+"""
+
+source = """
+
+class Test():
+    def __init__():
+        self.x = f()
+        
+    def __get_x__():
+        return self.x
+    
+def f():
+    return 4
+
+def main():
+    a = Test()
+    b = Test()
+    c = a.x
 
 """
 

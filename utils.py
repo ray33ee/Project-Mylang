@@ -12,6 +12,7 @@ import m_types
 from collections import OrderedDict
 
 import deduction
+import translator
 
 
 def analysis(source):
@@ -51,12 +52,24 @@ def analysis(source):
     mangler.run_mangler_tests()
 
     print("##################################")
-    print("Deduce types")
+    print("Deduction")
     print("##################################")
 
-    d = deduction.deduce(t)
+    tree = deduction.deduce(t)
 
-    print(d)
-    print(d.symbol_map)
+    print(tree)
+    print(tree.symbol_map)
+
+    for k, v in tree.subs.items():
+        print(f"{ast.dump(k)}: {ast.dump(v)}")
+
+    print("##################################")
+    print("Translation")
+    print("##################################")
+
+    _ir = translator.translate(tree)
+
+    print(ast.dump(_ir, indent=4))
+
 
 

@@ -16,29 +16,44 @@ def deduce(table: symbol_table.Table):
 
 
 class TypeTree:
-    def __init__(self, name, arg_types, node, parent, parent_class):
+    def __init__(self, name, arg_types, ast_node, parent, parent_class_type, parent_class_node):
+        # Todo: We don't need to pass 'name' as we can deduce this from ast_node.name
         self.function_name = name
-        arg_map = {key.arg: value for key, value in zip(node.args.args, arg_types)}
-        if parent_class:
-            member_types = parent_class.member_types
+        self.arg_types = arg_types
+        self.arg_map = OrderedDict()
+
+        for key, value in zip(ast_node.args.args, arg_types):
+            self.arg_map[key.arg] = value
+
+        if parent_class_type and name != "__init__":
+            member_types = parent_class_type.member_types
         else:
             member_types = OrderedDict()
-        self.node = node
+        self.ast_node = ast_node
         self.parent = parent
-        self.symbol_map = {**arg_map, **dict(member_types)}
+        # Combine the argument map and the class member variable map into one
+        self.symbol_map = {**self.arg_map, **dict(member_types)}
         self.child_trees = []
         self.ret_type = None
-        self.parent_class = parent_class # None if the function is a global function, UserClass node if the function is a member function
+        self.parent_class_type = parent_class_type # None if the function is a global function, UserClass node if the function is a member function
+        self.parent_class_node = parent_class_node
+        # A set of node substitutions. These can be used to allow modification of function code for each function not for the entire template
+        # Maps nodes to substitute to nodes to substitute with
+        self.subs = {}
+
+    def get_member_map(self):
+        pass
 
     def __repr__(self):
-        return f"TypeTree(name='{self.function_name}', map={self.symbol_map}, children={self.child_trees}, class={self.parent_class}, ret_type={self.ret_type})"
+        return f"TypeTree(name='{self.function_name}', map={self.symbol_map}, children={self.child_trees}, class={self.parent_class_type}, ret_type={self.ret_type})"
 
 
 
 # Translator walks the nodes and a) resolves types and b) converts code into IR
 class Deduction(ast.NodeVisitor):
 
-    # A list that can be used as a key in dictionaries
+    # Thin wrapper around lists that can be hashed
+    # Be careful not to externally mutate keys
     class HashableList:
 
         def __init__(self, iterable=[]):
@@ -54,6 +69,9 @@ class Deduction(ast.NodeVisitor):
 
         def __eq__(self, other):
             return self.l == other.l
+
+        def __repr__(self):
+            return f"HashableList({repr(self.l)})"
 
     # Given a built-in type (expr), a function name (func) and a list of argument types (...) we can determine the
     # return type of the function expr.func(...) using the following structure
@@ -93,7 +111,7 @@ class Deduction(ast.NodeVisitor):
     def __init__(self, table: symbol_table.Table):
         self.whole_table = table
 
-        self.working_tree_node = TypeTree("main", [], table.get_main().ast_node, None, None)
+        self.working_tree_node = TypeTree("main", [], table.get_main().ast_node, None, None, None)
 
 
     # Assert that all the expressions in args are the same type, then return this type. Otherwise raise an exception
@@ -139,7 +157,9 @@ class Deduction(ast.NodeVisitor):
 
         # first we check for any local variables with the name
         if node.id in self.working_tree_node.symbol_map:
-            # Convert the mycall 'identifier(...)' into 'identifier.__call__(...)'
+            # Add an entry to the substitution map
+            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(ast.Name(node.id), "__call__", node.args)
+            # Treat the mycall 'identifier(...)' as a 'identifier.__call__(...)'
             return self.visit_MemberFunction(custom_nodes.MemberFunction(ast.Name(node.id), "__call__", node.args))
 
         if node.id in self.whole_table:
@@ -155,7 +175,7 @@ class Deduction(ast.NodeVisitor):
                     # Get the function table entry for the function being called
                     function_table = self.match_function(arg_types, table_entry)
 
-                    tt = TypeTree(node.id, arg_types, function_table.ast_node, self.working_tree_node, None)
+                    tt = TypeTree(node.id, arg_types, function_table.ast_node, self.working_tree_node, None, None)
                     self.working_tree_node.child_trees.append(tt)
                     self.working_tree_node = tt
 
@@ -170,10 +190,13 @@ class Deduction(ast.NodeVisitor):
             elif isinstance(self.whole_table[node.id], symbol_table.Class):
                 # Get an ordered list of the argument types for the function call
                 arg_types = self.traverse(node.args)
-                # Get the function table entry for the __init__ function of the class being constructed
-                function_table = self.match_function(arg_types, self.whole_table[node.id]["__init__"])
 
-                tt = TypeTree("__init__", arg_types, function_table.ast_node, self.working_tree_node, None)
+                class_entry = self.whole_table[node.id]
+
+                # Get the function table entry for the __init__ function of the class being constructed
+                function_table = self.match_function(arg_types, class_entry["__init__"])
+
+                tt = TypeTree("__init__", arg_types, function_table.ast_node, self.working_tree_node, None, class_entry.node)
                 self.working_tree_node.child_trees.append(tt)
                 self.working_tree_node = tt
 
@@ -181,15 +204,20 @@ class Deduction(ast.NodeVisitor):
                 self.traverse(function_table.ast_node)
 
                 m = self.working_tree_node.symbol_map
-                parent = self.working_tree_node.parent
-                self.working_tree_node = parent
 
                 member_var_types = OrderedDict()
 
                 for mem in self.whole_table[node.id].member_variables:
                     member_var_types["self." + mem.name] = m["self." + mem.name]
 
-                return m_types.UserClass(node.id, member_var_types)
+                usr_class = m_types.UserClass(node.id, member_var_types)
+
+                self.working_tree_node.parent_class_type = usr_class
+
+                parent = self.working_tree_node.parent
+                self.working_tree_node = parent
+
+                return usr_class
 
 
     def visit_FormattedValue(self, node):
@@ -203,12 +231,12 @@ class Deduction(ast.NodeVisitor):
         # Get an ordered list of the argument types for the function call
         arg_types = self.traverse(node.args)
 
-        user_class = self.working_tree_node.parent_class
+        user_class = self.working_tree_node.parent_class_type
 
         class_table = self.whole_table[user_class.identifier]
         function_table = self.match_function(arg_types, class_table[node.id])
 
-        tt = TypeTree("__init__", arg_types, function_table.ast_node, self.working_tree_node, user_class)
+        tt = TypeTree(node.id, arg_types, function_table.ast_node, self.working_tree_node, user_class, class_table.node)
         self.working_tree_node.child_trees.append(tt)
         self.working_tree_node = tt
 
@@ -233,7 +261,7 @@ class Deduction(ast.NodeVisitor):
             class_table = self.whole_table[class_name]
             function_table = self.match_function(arg_types, class_table[node.id])
 
-            tt = TypeTree(node.id, arg_types, function_table.ast_node, self.working_tree_node, ex_type)
+            tt = TypeTree(node.id, arg_types, function_table.ast_node, self.working_tree_node, ex_type, class_table.node)
             self.working_tree_node.child_trees.append(tt)
             self.working_tree_node = tt
 
@@ -244,17 +272,28 @@ class Deduction(ast.NodeVisitor):
             parent = self.working_tree_node.parent
             self.working_tree_node = parent
 
-
             return ret_type
-
 
         else:
             # Expression is a built-in type, so to get the return type we look to the built_in_returns map
-            return self.built_in_returns[ex_type][node.id][self.HashableList(arg_types)]
+            b = self.built_in_returns[ex_type][node.id][self.HashableList(arg_types)]
+
+            # If the lookup fails, we might be able to use the right functions instead. For example
+            # if __add__ fails try __radd__ instead. If radd works, replace it with `self.working_tree_node.subs`.
+
+            # Lets use an example, say we have a function call
+            # a.__add__(b)
+            # which is not implemented for 'a'. We then try
+            # b.__radd__(a)
+            # if this is implemented, we swap it out via the substitution map. if it is not, this is a compiler error
+
+            # Note: We must perform this test on user defined types, as well as built-ins
+
+            return b
 
 
     def visit_SolitarySelf(self, node):
-        return self.working_tree_node.parent_class
+        return self.working_tree_node.parent_class_type
 
     def visit_MonoAssign(self, node):
 
@@ -265,12 +304,11 @@ class Deduction(ast.NodeVisitor):
             if node.target.id in self.working_tree_node.symbol_map:
 
                 if self.working_tree_node.symbol_map[node.target.id] != r_value_type:
-                    raise "Reassignment (to a different type) is not supported right now. The TypeTree structure only holds one type per variable name and is not able to support reassignment"
+                    self.working_tree_node.symbol_map[node.target.id] = r_value_type
                 else:
-                    #node.assign_type = custom_nodes.Reassign()
-                    pass
+                    # If the variable has been assigned to before and this new assignment is of the same value, we have a reassignment (such as a = a + x)
+                    self.working_tree_node.subs[node] = custom_nodes.Reassign(node.target, node.value)
             else:
-                #node.assign_type = custom_nodes.FirstAssign()
                 self.working_tree_node.symbol_map[node.target.id] = r_value_type
 
         elif isinstance(node.target, custom_nodes.SelfMemberVariable):

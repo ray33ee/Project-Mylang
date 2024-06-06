@@ -177,6 +177,9 @@ class ClassDef(ast.AST):
 
 
 class Module(ast.AST):
+
+    _fields = ["functions", "classes"]
+
     def __init__(self):
         super().__init__()
         self.functions = []
