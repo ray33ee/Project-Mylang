@@ -64,16 +64,6 @@ class SelfVariable(Expression):
         self.id = _id
 
 
-class ClassConstructor(Expression):
-
-    _fields = ["class_name", "args"]
-
-    def __init__(self, class_name: str, args: list[Expression]):
-        super().__init__()
-        self.class_name = class_name
-        self.args = args
-
-
 class Identifier(Expression):
 
     _fields = ["id"]
@@ -89,6 +79,16 @@ class IRTuple(Expression):
     def __init__(self, elements):
         super().__init__()
         self.elements = elements
+
+
+class ClassConstructor(Expression):
+
+    _fields = ["usr_class", "args"]
+
+    def __init__(self, usr_class: m_types.UserClass, args):
+        super().__init__()
+        self.usr_class = usr_class
+        self.args = args
 
 class Statement(ast.AST):
     pass
@@ -114,10 +114,30 @@ class Return(Statement):
 
 
 class LetAssign(Statement):
-    pass
+
+    _fields = ["target", "value"]
+
+    def __init__(self, target, value):
+        super().__init__()
+        self.target = target
+        self.value = value
 
 
 class Reassign(Statement):
+
+    _fields = ["target", "value"]
+
+    def __init__(self, target, value):
+        super().__init__()
+        self.target = target
+        self.value = value
+
+
+class Break(ast.AST):
+    pass
+
+
+class Continue(ast.AST):
     pass
 
 class FunctionDef(ast.AST):

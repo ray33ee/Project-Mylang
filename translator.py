@@ -61,12 +61,20 @@ class Translator(ast.NodeVisitor):
         self.working_tree = p
 
 
+    def visit(self, node):
+
+        if len(self.working_tree.subs.keys()) != 0:
+            print(ast.dump(list(self.working_tree.subs.values())[0]))
+        if node in self.working_tree.subs:
+            return super().visit(self.working_tree.subs[node])
+        else:
+            return super().visit(node)
+
     def traverse(self, node):
         if type(node) is list:
-            for n in node:
-                self.visit(n)
+            return [self.visit(n) for n in node]
         else:
-            self.visit(node)
+            return self.visit(node)
 
 
     def visit_ClassDef(self, node):
@@ -76,7 +84,7 @@ class Translator(ast.NodeVisitor):
 
         # Create a new IR entry
         self.working_function = ir.FunctionDef(self.working_tree.function_name, self.working_tree.arg_map)
-        self.working_function.ret_type = self.working_tree.ret_type
+        self.working_function.set_return_type(self.working_tree.ret_type)
 
         # Traverse the function body
         self.traverse(node.body)
@@ -105,3 +113,50 @@ class Translator(ast.NodeVisitor):
             self.module.add_function(self.working_function)
 
         self.working_function = None
+
+    def visit_MonoAssign(self, node):
+        fa = ir.LetAssign(self.traverse(node.target), self.traverse(node.value))
+        self.working_function.add_statement(fa)
+
+    def visit_Return(self, node):
+        print("Node")
+        print(self.working_tree.subs)
+        re = ir.Return(self.traverse(node.value))
+        self.working_function.add_statement(re)
+
+    def visit_Expr(self, node):
+        ex = ir.Expression(self.traverse(node.value))
+        self.working_function.add_statement(ex)
+
+    def visit_Break(self, node):
+        self.working_function.add_statement(ir.Break())
+
+    def visit_Continue(self, node):
+        self.working_function.add_statement(ir.Continue())
+
+    def visit_Pass(self, node):
+        pass
+
+    def visit_Name(self, node):
+        return ir.Identifier(node.id)
+
+    def visit_Constant(self, node):
+        return ir.Constant(node.value)
+
+    def visit_SolitarySelf(self, node):
+        return ir.SolitarySelf()
+
+    def visit_SelfMemberVariable(self, node):
+        return ir.SelfVariable(node.id)
+
+    def visit_SelfMemberFunction(self, node):
+        return ir.SelfFunction(node.id, self.traverse(node.args))
+
+    def visit_MemberFunction(self, node):
+        return ir.MemberFunction(self.traverse(node.exp), node.id, self.traverse(node.args))
+
+    def visit_ConstructorCall(self, node):
+        return ir.ClassConstructor(node.class_id, self.traverse(node.args))
+
+    def visit_MyCall(self, node):
+        return ir.GlobalFunctionCall(node.id, self.traverse(node.args))

@@ -45,7 +45,8 @@ class TypeTree:
         pass
 
     def __repr__(self):
-        return f"TypeTree(name='{self.function_name}', map={self.symbol_map}, children={self.child_trees}, class={self.parent_class_type}, ret_type={self.ret_type})"
+        return f"name='{self.function_name}', subs={self.subs}"
+        return f"TypeTree(name='{self.function_name}', map={self.symbol_map}, children={self.child_trees}, class={self.parent_class_type}, ret_type={self.ret_type}, subs={self.subs})"
 
 
 
@@ -211,6 +212,8 @@ class Deduction(ast.NodeVisitor):
                     member_var_types["self." + mem.name] = m["self." + mem.name]
 
                 usr_class = m_types.UserClass(node.id, member_var_types)
+
+                self.working_tree_node.parent.subs[node] = custom_nodes.ConstructorCall(usr_class, arg_types)
 
                 self.working_tree_node.parent_class_type = usr_class
 

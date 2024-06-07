@@ -52,6 +52,16 @@ class MyCall(ast.AST):
         self.args = args
 
 
+class ConstructorCall(ast.AST):
+
+    _fields = ["class_id", "args"]
+
+    def __init__(self, class_id, args):
+        super().__init__()
+        self.class_id = class_id
+        self.args = args
+
+
 # Declare and assign. maps to Rust's let statement
 class MonoAssign(ast.AST):
 
