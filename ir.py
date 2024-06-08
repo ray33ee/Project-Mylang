@@ -94,6 +94,14 @@ class Statement(ast.AST):
     pass
 
 
+class Expr(Statement):
+
+    _fields = ["expr"]
+
+    def __init__(self, expr):
+        super().__init__()
+        self.expr = expr
+
 class IfElse(Statement):
 
     _fields = ["if_block", "else_block"]

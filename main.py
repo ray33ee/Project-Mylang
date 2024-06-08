@@ -199,10 +199,14 @@ class Test():
 def f():
     return 4
 
+def g():
+    pass
+
 def main():
     a = Test()
     b = Test()
     c = a.x
+    g()
 
 """
 

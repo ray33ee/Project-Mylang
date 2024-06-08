@@ -71,8 +71,10 @@ class Translator(ast.NodeVisitor):
             return super().visit(node)
 
     def traverse(self, node):
+
         if type(node) is list:
-            return [self.visit(n) for n in node]
+            # Convert an array of nodes into an array of self.visit(node) values removing any Nones
+            return list(filter(lambda x : x != None, map(self.visit, node)))
         else:
             return self.visit(node)
 
@@ -83,11 +85,11 @@ class Translator(ast.NodeVisitor):
     def visit_FunctionDef(self, node):
 
         # Create a new IR entry
-        self.working_function = ir.FunctionDef(self.working_tree.function_name, self.working_tree.arg_map)
-        self.working_function.set_return_type(self.working_tree.ret_type)
+        ir_function = ir.FunctionDef(self.working_tree.function_name, self.working_tree.arg_map)
+        ir_function.set_return_type(self.working_tree.ret_type)
 
         # Traverse the function body
-        self.traverse(node.body)
+        ir_function.body = self.traverse(node.body)
 
         if self.working_tree.function_name == "__init__" and self.working_tree.parent_class_type and self.working_tree.parent_class_node:
             usr = self.working_tree.parent_class_type
@@ -100,42 +102,35 @@ class Translator(ast.NodeVisitor):
 
                 self.class_map[usr] = ir_class
 
-            ir_class.add_function(self.working_function)
+            ir_class.add_function(ir_function)
 
 
         elif self.working_tree.parent_class_type and self.working_tree.parent_class_node:
             # Member function
             usr = self.working_tree.parent_class_type
 
-            self.class_map[usr].add_function(self.working_function)
+            self.class_map[usr].add_function(ir_function)
         else:
             # Global function
-            self.module.add_function(self.working_function)
-
-        self.working_function = None
+            self.module.add_function(ir_function)
 
     def visit_MonoAssign(self, node):
-        fa = ir.LetAssign(self.traverse(node.target), self.traverse(node.value))
-        self.working_function.add_statement(fa)
+        return ir.LetAssign(self.traverse(node.target), self.traverse(node.value))
 
     def visit_Return(self, node):
-        print("Node")
-        print(self.working_tree.subs)
-        re = ir.Return(self.traverse(node.value))
-        self.working_function.add_statement(re)
+        return ir.Return(self.traverse(node.value))
 
     def visit_Expr(self, node):
-        ex = ir.Expression(self.traverse(node.value))
-        self.working_function.add_statement(ex)
+        return ir.Expr(self.traverse(node.value))
 
     def visit_Break(self, node):
-        self.working_function.add_statement(ir.Break())
+        return ir.Break()
 
     def visit_Continue(self, node):
-        self.working_function.add_statement(ir.Continue())
+        return ir.Continue()
 
     def visit_Pass(self, node):
-        pass
+        return None
 
     def visit_Name(self, node):
         return ir.Identifier(node.id)
