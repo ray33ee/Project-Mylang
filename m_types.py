@@ -15,6 +15,39 @@ class MType:
     def __next__(self, other):
         return not self == other
 
+    def get_type(self):
+        return self
+
+
+# Convenience function. Used when the type is not immediately know, for example when declaring an empty array the
+# type would be Vector(Unknown)
+class Unknown:
+    def __init__(self, inner=None):
+        self.inner = inner
+
+    def __repr__(self):
+        return f"Unknown({self.inner})"
+
+    def fill(self, inner):
+        self.inner = inner
+
+    def mangle(self):
+        return self.inner.mangle()
+
+    def __eq__(self, other):
+        assert self.inner and other.inner
+        return self.inner == other.inner
+
+    def __hash__(self):
+        return hash(id(self))
+
+    def get_type(self):
+        if self.inner:
+            return self.inner
+        else:
+            return "Cannot unwrap Unkown with uninitialised type"
+
+
 class Boolean(MType):
 
     _fields = []
@@ -95,6 +128,9 @@ class Vector(MType):
     def __repr__(self):
         return "Vector(" + repr(self.element_type) + ")"
 
+    def get_type(self):
+        return Vector(self.element_type.get_type())
+
 
 class String(MType):
 
@@ -133,6 +169,9 @@ class Dictionary(MType):
     def __repr__(self):
         return "Dictionary(" + repr(self.key_type) + ", " + repr(self.value_type) + ")"
 
+    def get_type(self):
+        return Dictionary(self.key_type.get_type(), self.value_type.get_type())
+
 
 class DynamicSet(MType):
 
@@ -144,9 +183,11 @@ class DynamicSet(MType):
     def mangle(self):
         return "s" + self.element_type.mangle()
 
-
     def __repr__(self):
         return "Set(" + repr(self.element_type) + ")"
+
+    def get_type(self):
+        return DynamicSet(self.element_type.get_type())
 
 
 class Option(MType):
@@ -163,6 +204,9 @@ class Option(MType):
     def __repr__(self):
         return "Option(" + repr(self.contained_type) + ")"
 
+    def get_type(self):
+        return Option(self.contained_type.get_type())
+
 
 class Result(MType):
 
@@ -177,6 +221,9 @@ class Result(MType):
 
     def __repr__(self):
         return "Result(" + repr(self.ok_type) + ", " + repr(self.err_type) + ")"
+
+    def get_type(self):
+        return Result(self.ok_type.get_type(), self.err_type.get_type())
 
 
 # Used when no annotation is provided for a type, and can match any type

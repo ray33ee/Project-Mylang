@@ -190,14 +190,27 @@ def main():
 source = """
 
 
+class Wrapper:
+    def __init__():
+        self.l = []
+        
+    def __get_l__():
+        return self.l
+    
+    def app(x):
+        self.l.append(x)
+        
+def f(x):
+    return x
+
 def main():
-    a = 3
-    b = 3
     
-    a == b
+    a = Wrapper()
     
-    while a == b:
-        c = "yes"
+    b = a.l
+    
+    f(b)
+    
     
 
 """

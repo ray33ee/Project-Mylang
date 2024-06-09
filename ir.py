@@ -46,6 +46,7 @@ class MemberFunction(Expression):
         self.id = _id
         self.args = args
 
+
 class SelfFunction(Expression):
 
     _fields = ["id", "args"]
@@ -168,6 +169,7 @@ class Break(ast.AST):
 class Continue(ast.AST):
     pass
 
+
 class FunctionDef(ast.AST):
 
     _fields = ["name", "body", "ret_type", "args"]
@@ -176,11 +178,14 @@ class FunctionDef(ast.AST):
         super().__init__()
         self.name = name
         self.body = []
-        self.ret_type = None
+        self.ret_type = m_types.Ntuple([])
 
         # Must be an ordered dict mapping arg names to arg types
         assert type(args) is OrderedDict
         self.args = args
+
+        for k in self.args.keys():
+            self.args[k] = self.args[k].get_type()
 
     def add_statement(self, statement: Statement):
         self.body.append(statement)
@@ -211,6 +216,10 @@ class ClassDef(ast.AST):
         # Must be an ordered dict mapping agr names to types
         self.member_map = member_map
         self.functions = []
+
+
+        for k in self.member_map.keys():
+            self.member_map[k] = self.member_map[k].get_type()
 
     def add_function(self, function: FunctionDef):
         self.functions.append(function)

@@ -1,4 +1,5 @@
 import ast
+from collections import OrderedDict
 
 import deduction
 import ir
@@ -86,7 +87,7 @@ class Translator(ast.NodeVisitor):
 
         # Create a new IR entry
         ir_function = ir.FunctionDef(self.working_tree.function_name, self.working_tree.arg_map)
-        ir_function.set_return_type(self.working_tree.ret_type)
+        ir_function.set_return_type(self.working_tree.ret_type.get_type())
 
         # Traverse the function body
         ir_function.body = self.traverse(node.body)

@@ -34,7 +34,7 @@ class TypeTree:
         # Combine the argument map and the class member variable map into one
         self.symbol_map = {**self.arg_map, **dict(member_types)}
         self.child_trees = []
-        self.ret_type = None
+        self.ret_type = m_types.Ntuple([])
         self.parent_class_type = parent_class_type # None if the function is a global function, UserClass node if the function is a member function
         self.parent_class_node = parent_class_node
         # A set of node substitutions. These can be used to allow modification of function code for each function not for the entire template
@@ -108,6 +108,8 @@ class Deduction(ast.NodeVisitor):
             "__imag__": { HashableList(): m_types.Integer()  },
 
             "__eq__": { HashableList([m_types.Integer()]): m_types.Boolean()},
+
+            "__next__": {HashableList(): m_types.Option(m_types.Integer())}
         },
     }
 
@@ -147,6 +149,15 @@ class Deduction(ast.NodeVisitor):
 
     def visit_Name(self, node):
         return self.working_tree_node.symbol_map[node.id]
+
+
+    def visit_List(self, node):
+        if len(node.elts) == 0:
+            return m_types.Vector(m_types.Unknown())
+        elif len(node.elts) == 1:
+            return m_types.Vector(self.traverse(node.elts[0]))
+        else:
+            raise NotImplemented()
 
 
     def visit_Tuple(self, node):
@@ -260,6 +271,11 @@ class Deduction(ast.NodeVisitor):
         # Get an ordered list of the argument types for the function call
         arg_types = self.traverse(node.args)
 
+        if type(ex_type) is m_types.Vector and node.id == "append":
+            t = arg_types[0]
+            ex_type.element_type.inner = t
+            return t
+
         if type(ex_type) is m_types.UserClass:
 
             class_name = ex_type.identifier
@@ -338,7 +354,13 @@ class Deduction(ast.NodeVisitor):
         self.traverse(node.body)
 
     def visit_For(self, node):
-        raise NotImplemented()
+
+        if type(node.target) is ast.Name:
+            self.working_tree_node.symbol_map[node.target.id] = self.traverse(custom_nodes.MemberFunction(node.iter.exp, "__next__", []))
+        else:
+            raise "For target must be a name"
+
+        self.traverse(node.body)
 
 
     def visit_FunctionDef(self, node):
