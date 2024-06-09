@@ -104,12 +104,32 @@ class Expr(Statement):
 
 class IfElse(Statement):
 
-    _fields = ["if_block", "else_block"]
+    _fields = ["condition", "if_block", "else_block"]
 
-    def __init__(self, if_block: list[Statement], else_block: list[Statement] = None):
+    def __init__(self, condition, if_block: list[Statement], else_block: list[Statement] = None):
         super().__init__()
+        self.condition = condition
         self.if_block = if_block
         self.else_block = else_block
+
+class While(Statement):
+
+    _fields = ["condition", "body"]
+
+    def __init__(self, condition, body: list[Statement]):
+        super().__init__()
+        self.condition = condition
+        self.body = body
+
+class For(Statement):
+
+    _fields = ["target", "iterator", "body"]
+
+    def __init__(self, target, iterator, body: list[Statement]):
+        super().__init__()
+        self.target = target
+        self.iterator = iterator
+        self.body = body
 
 
 class Return(Statement):

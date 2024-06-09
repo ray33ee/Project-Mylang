@@ -123,6 +123,15 @@ class Translator(ast.NodeVisitor):
     def visit_Expr(self, node):
         return ir.Expr(self.traverse(node.value))
 
+    def visit_If(self, node):
+        return ir.IfElse(self.traverse(node.test), self.traverse(node.body), self.traverse(node.orelse))
+
+    def visit_While(self, node):
+        return ir.While(self.traverse(node.test), self.traverse(node.body))
+
+    def visit_For(self, node):
+        return ir.For(self.traverse(node.target), self.traverse(node.iter), self.traverse(node.body))
+
     def visit_Break(self, node):
         return ir.Break()
 

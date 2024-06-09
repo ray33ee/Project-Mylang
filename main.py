@@ -189,24 +189,16 @@ def main():
 
 source = """
 
-class Test():
-    def __init__():
-        self.x = f()
-        
-    def __get_x__():
-        return self.x
-    
-def f():
-    return 4
-
-def g():
-    pass
 
 def main():
-    a = Test()
-    b = Test()
-    c = a.x
-    g()
+    a = 3
+    b = 3
+    
+    a == b
+    
+    while a == b:
+        c = "yes"
+    
 
 """
 

@@ -357,6 +357,18 @@ class _Sugar(ast.NodeTransformer):
             # 5.
 
             return assigns
+        
+    def visit_If(self, node):
+        condition = custom_nodes.MemberFunction(self.traverse(node.test), "__bool__", [])
+        return ast.If(condition, self.traverse(node.body), self.traverse(node.orelse))
+
+    def visit_While(self, node):
+        condition = custom_nodes.MemberFunction(self.traverse(node.test), "__bool__", [])
+        return ast.While(condition, self.traverse(node.body), self.traverse(node.orelse))
+
+    def visit_For(self, node):
+        iter = custom_nodes.MemberFunction(self.traverse(node.iter), "__iter__", [])
+        return ast.For(self.traverse(node.target), iter, self.traverse(node.body), self.traverse(node.orelse))
 
     def visit_BinOp(self, node):
         binary_op_mapping = {

@@ -106,6 +106,8 @@ class Deduction(ast.NodeVisitor):
             "__add__": { HashableList([m_types.Integer()]): m_types.Integer(), HashableList([m_types.Floating()]): m_types.Floating() },
             "__real__": { HashableList(): m_types.Integer()  },
             "__imag__": { HashableList(): m_types.Integer()  },
+
+            "__eq__": { HashableList([m_types.Integer()]): m_types.Boolean()},
         },
     }
 
@@ -326,6 +328,17 @@ class Deduction(ast.NodeVisitor):
         self.working_tree_node.ret_type = ret_type
 
 
+    def visit_If(self, node):
+        self.traverse(node.test)
+        self.traverse(node.body)
+
+
+    def visit_While(self, node):
+        self.traverse(node.test)
+        self.traverse(node.body)
+
+    def visit_For(self, node):
+        raise NotImplemented()
 
 
     def visit_FunctionDef(self, node):
