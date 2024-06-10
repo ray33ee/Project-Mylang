@@ -42,7 +42,7 @@ def analysis(source):
     print("##################################")
 
     # Get the Mylang AST
-    t = symbol_table.Table(my_ast, table)
+    t = symbol_table.Table(my_ast)
     print(t)
 
     print("##################################")

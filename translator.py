@@ -64,8 +64,6 @@ class Translator(ast.NodeVisitor):
 
     def visit(self, node):
 
-        if len(self.working_tree.subs.keys()) != 0:
-            print(ast.dump(list(self.working_tree.subs.values())[0]))
         if node in self.working_tree.subs:
             return super().visit(self.working_tree.subs[node])
         else:

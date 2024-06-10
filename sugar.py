@@ -54,7 +54,7 @@ def sugar(node: ast.AST):
 class _Sugar(ast.NodeTransformer):
 
     built_in_set = {"float", "int", "complex", "id", "char", "str", "repr", "bool", "abs", "len", "iter",
-                    "next", "path", "real", "imag", "bytes"}
+                    "next", "path", "real", "imag", "bytes", "zero", "one"}
 
     def __init__(self):
         super().__init__()
@@ -121,7 +121,7 @@ class _Sugar(ast.NodeTransformer):
     def resolve_annotation(self, annotation):
 
         if not annotation:
-            return m_types.WildCard
+            return m_types.WildCard()
         if type(annotation) is ast.Constant:
             print(type(annotation.value))
             if annotation.value == ...:
@@ -146,17 +146,17 @@ class _Sugar(ast.NodeTransformer):
             elif annotation.id == "str":
                 return m_types.String()
             elif annotation.id == "list":
-                return m_types.Vector(None)
+                return m_types.Vector(m_types.WildCard)
             elif annotation.id == "tuple":
                 raise "Tuple must contain types or wildcards. tuple[...] where ... represents a wildcard for any type"
             elif annotation.id == "dict":
-                return m_types.Dictionary(None, None)
+                return m_types.Dictionary(m_types.WildCard, m_types.WildCard)
             elif annotation.id == "set":
-                return m_types.DynamicSet(None)
+                return m_types.DynamicSet(m_types.WildCard)
             elif annotation.id == "option":
-                return m_types.Option(None)
+                return m_types.Option(m_types.WildCard)
             elif annotation.id == "result":
-                return m_types.Result(None, None)
+                return m_types.Result(m_types.WildCard, m_types.WildCard)
             else:
                 raise "Argument annotation (Name) not recognised"
         elif type(annotation) is ast.Subscript:

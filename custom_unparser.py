@@ -1,11 +1,65 @@
 import ast
 
+import m_types
+
+
 # Reimplements ast's _Unparser to work with our custom AST nodes.
 # Not needed during translation but useful for debugging
 
 class _Unparser(ast._Unparser):
     def __init__(self,  _avoid_backslashes=False):
         super().__init__()
+
+    def visit_arg(self, node):
+
+        self.write(node.arg)
+
+        if type(node.annotation) is not m_types.WildCard:
+            self.write(": ")
+            self.traverse(node.annotation)
+
+    def visit_Integer(self, node):
+        self.write("int")
+
+    def visit_Floating(self, node):
+        self.write("float")
+
+    def visit_String(self, node):
+        self.write("str")
+
+    def visit_ID(self, node):
+        self.write("id")
+
+    def visit_Bytes(self, node):
+        self.write("bytes")
+
+    def visit_Boolean(self, node):
+        self.write("bool")
+
+    def visit_Char(self, node):
+        self.write("char")
+
+    def visit_Vector(self, node):
+        self.write("list[")
+        self.traverse(node.element_type)
+        self.write("]")
+
+    def visit_DynamicSet(self, node):
+        self.write("set[")
+        self.traverse(node.element_type)
+        self.write("]")
+
+    def visit_Ntuple(self, node):
+        raise NotImplemented()
+
+    def visit_Result(self, node):
+        raise NotImplemented()
+
+    def visit_Option(self, node):
+        raise NotImplemented()
+
+    def visit_Dictionary(self, node):
+        raise NotImplemented()
 
     def visit_SolitarySelf(self, node):
         self.write("SOLITARYself")

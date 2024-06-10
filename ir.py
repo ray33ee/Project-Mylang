@@ -172,7 +172,7 @@ class Continue(ast.AST):
 
 class FunctionDef(ast.AST):
 
-    _fields = ["name", "body", "ret_type", "args"]
+    _fields = ["name", "args", "ret_type", "body"]
 
     def __init__(self, name, args):
         super().__init__()
@@ -212,6 +212,8 @@ class ClassDef(ast.AST):
     def __init__(self, name, member_map):
         super().__init__()
         self.name = name
+
+        assert type(member_map) is OrderedDict
 
         # Must be an ordered dict mapping agr names to types
         self.member_map = member_map

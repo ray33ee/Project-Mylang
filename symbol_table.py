@@ -1,63 +1,16 @@
 import ast
 import symtable
 
+import custom_unparser
 import errors
 import members
 import utils
-
-
-
-# Get a list of all globals, i.e. all top level nodes - currently this is a tuple of a dictionary of
-# name-function node pairs, and a dictionary of name-class node pairs,
-def get_globals(_ast: ast.Module):
-    functions = {}
-    classes = {}
-
-    for node in _ast.body:
-        if type(node) is ast.FunctionDef:
-            functions[node.name] = node
-        if type(node) is ast.ClassDef:
-            functions = {}
-            for f in node.body:
-                if type(f) is ast.FunctionDef:
-                    functions[f.name] = f
-            classes[node.name] = (node, functions)
-
-    return functions, classes
-
-# Signifies the location of a variable to exist on the stack
-class StackVariable:
-    pass
-
-
-# Signifies the location of a variable to exist on the stack
-class HeapVariable:
-    pass
-
-
-# Signifies the reference counting strategy is the standard kind (std::rc::Rc)
-class StandardReferenceCounting:
-    pass
-
-
-# Signifies the reference counting strategy uses dumpster (dumpster::sync::Gc)
-class DumpsterReferenceCounting:
-    pass
 
 
 # A class representing a variable in a symbol table
 class Variable:
     def __init__(self, name):
         self.name = name
-        self.type = None
-        self.location = None
-        self.rc_strategy = None
-        self.is_parameter = None
-        self.is_local = None
-        self.is_self_variable = None  # True if a variable is a member variable in a class (self.SOMETHING)
-        self.declaration = None  # A node in the python AST that points to the first assignment of the variable
-        self.variables = []
-        self.requirements = None # If the variable is a parameter, this will be filled with its requirements
 
     def __repr__(self):
         return self.name
@@ -65,10 +18,17 @@ class Variable:
 
 # A class representing a function in a symbol table
 class Function:
-    def __init__(self, name, ast_node, table):
-        self.name = name
+    def __init__(self, ast_node):
+        self.name = ast_node.name
         self.ast_node = ast_node
         self.variables = []
+
+        # Get the table from the ast_node itself by unparsing, then using this code in a symtable
+        func_code = custom_unparser.unparse(ast_node)
+
+        t = symtable.symtable(func_code, "", "exec")
+
+        table = t.get_children()[0]
 
         for t in table.get_symbols():
             if type(t) is symtable.Symbol:
@@ -79,35 +39,19 @@ class Function:
     def __str__(self):
         return f"{self.name} {self.ast_node} {self.variables}"
 
-    def parameters(self):
-        for variable in self.variables:
-            if variable.is_parameter == True:
-                yield variable
-
-    def __contains__(self, item):
-        for var in self.variables:
-            if var.name == item:
-                return True
-
-        return False
-
-    def __getitem__(self, item):
-        for var in self.variables:
-            if var.name == item:
-                return var
-
-        raise KeyError()
-
-
-
-
 
 class Class:
-    def __init__(self, name, node, functions, member_variables):
-        self.name = name
-        self.functions = functions
+    def __init__(self, node, member_variables):
+        self.name = node.name
+        self.functions = []
         self.node = node
         self.member_variables = member_variables
+
+        for statement in node.body:
+            if type(statement) is ast.FunctionDef:
+                self.functions.append(Function(statement))
+            else:
+                raise "Classes can only contain function definitions"
 
     def __contains__(self, item):
 
@@ -127,32 +71,26 @@ class Class:
 
         return funcs
 
+
 # Mylang tables are simpler than python tables, since python allows nested functions, classes, and all sorts of
 # topologies, whereas mylang does not. Mylang can have a list of functions and a list of classes. Each class contains
 # a list of functions. Each function contains a list of variables. This structure is emulated in the Table class:
 class Table:
-    def __init__(self, _ast: ast.Module, table: symtable.SymbolTable):
+
+    def __init__(self, mod: ast.Module):
+
         self.functions = []
         self.classes = []
 
-        function_nodes, class_nodes = get_globals(_ast)
+        member_variables = members.resolve_members(mod)
 
-        member_variables = members.resolve_members(_ast)
-
-        for t in table.get_children():
-            if type(t) is symtable.Function:
-                self.functions.append(Function(t.get_name(), function_nodes[t.get_name()], t))
-            if type(t) is symtable.Class:
-                node, class_function_nodes = class_nodes[t.get_name()]
-
-
-                class_functions = []
-
-                for f in t.get_children():
-                    class_functions.append(Function(f.get_name(), class_function_nodes[f.get_name()], f))
-
-                self.classes.append(Class(t.get_name(), node, class_functions, list(map(lambda x: Variable(x), member_variables[t.get_name()]))    ))
-
+        for statement in mod.body:
+            if type(statement) is ast.FunctionDef:
+                self.functions.append(Function(statement))
+            elif type(statement) is ast.ClassDef:
+                self.classes.append(Class(statement, list(map(lambda x: Variable(x), member_variables[statement.name]))))
+            else:
+                raise "Top level objects can only be classes or functions"
 
 
 
@@ -210,4 +148,3 @@ class Table:
                 funcs.append(func)
 
         return funcs
-

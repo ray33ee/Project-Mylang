@@ -211,8 +211,63 @@ def main():
     
     f(b)
     
+    a.app(4)
+    
     
 
 """
 
+source = """
+
+class Range:
+    def __init__(length):
+        self.index = zero(length)
+        
+    def __get_index__():
+        return self.index
+    
+    def __set_index__(value):
+        self.index = value
+        
+    def __iter__():
+        return self
+        
+    def __next__():
+        r = self.index
+        self.index = self.index + one(self.index)
+        return r
+
+def f(x: int):
+    return x
+
+def main():
+    r = Range(44.0)
+    
+    l = iter(r)
+    
+    for i in r:
+        f(i)
+
+"""
+
+source = """
+
+def f(x: float):
+    return x
+
+def f(x: int):
+    return x
+
+def f(x):
+    return x
+    
+def main():
+    f(4)
+
+"""
+
 utils.analysis(source)
+
+t = symtable.symtable(source, "yes", "exec")
+
+print(t)

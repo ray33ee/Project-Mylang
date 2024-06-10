@@ -100,6 +100,9 @@ class Deduction(ast.NodeVisitor):
             "__add__": { HashableList([m_types.Floating()]): m_types.Floating(), HashableList([m_types.Integer()]): m_types.Floating()},
             "__real__": { HashableList(): m_types.Floating()  },
             "__imag__": { HashableList(): m_types.Floating()  },
+
+            "__zero__": {HashableList(): m_types.Floating()},
+            "__one__": {HashableList(): m_types.Floating()},
         },
 
         m_types.Integer(): {
@@ -109,7 +112,10 @@ class Deduction(ast.NodeVisitor):
 
             "__eq__": { HashableList([m_types.Integer()]): m_types.Boolean()},
 
-            "__next__": {HashableList(): m_types.Option(m_types.Integer())}
+            "__next__": {HashableList(): m_types.Option(m_types.Integer())},
+
+            "__zero__": {HashableList(): m_types.Integer()},
+            "__one__": {HashableList(): m_types.Integer()},
         },
     }
 
@@ -132,7 +138,17 @@ class Deduction(ast.NodeVisitor):
 
     # Given a list of potential functions and a list of agruments, choose the most appropriate function template
     def match_function(self, arg_list, candidates):
-        return candidates[0]
+
+        print("**********")
+        print("Matcher")
+        print("**********")
+
+        best_choice = candidates[0]
+
+        for x in candidates:
+            print(ast.dump(x.ast_node))
+
+        return best_choice
 
 
     def visit_Constant(self, node):
@@ -222,11 +238,16 @@ class Deduction(ast.NodeVisitor):
                 member_var_types = OrderedDict()
 
                 for mem in self.whole_table[node.id].member_variables:
+                    print("MEM")
+                    print(type(mem))
                     member_var_types["self." + mem.name] = m["self." + mem.name]
 
                 usr_class = m_types.UserClass(node.id, member_var_types)
 
-                self.working_tree_node.parent.subs[node] = custom_nodes.ConstructorCall(usr_class, arg_types)
+                print("Arg types")
+                print(arg_types)
+
+                self.working_tree_node.parent.subs[node] = custom_nodes.ConstructorCall(usr_class, node.args)
 
                 self.working_tree_node.parent_class_type = usr_class
 
@@ -356,7 +377,7 @@ class Deduction(ast.NodeVisitor):
     def visit_For(self, node):
 
         if type(node.target) is ast.Name:
-            self.working_tree_node.symbol_map[node.target.id] = self.traverse(custom_nodes.MemberFunction(node.iter.exp, "__next__", []))
+            self.working_tree_node.symbol_map[node.target.id] = self.traverse(custom_nodes.MemberFunction(node.iter, "__next__", []))
         else:
             raise "For target must be a name"
 
