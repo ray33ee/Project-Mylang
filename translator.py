@@ -6,7 +6,7 @@ import ir
 
 
 def translate(tree):
-    t = Translator(tree)
+    t = _Translator(tree)
     t.climb_tree()
     m = t.module
 
@@ -15,7 +15,7 @@ def translate(tree):
     return t.module
 
 # Class which takes a TypeTree and returns a Rust IR
-class Translator(ast.NodeVisitor):
+class _Translator(ast.NodeVisitor):
     def __init__(self, tree: deduction.TypeTree):
         self.working_tree = tree
 
@@ -39,7 +39,7 @@ class Translator(ast.NodeVisitor):
                 c = None
 
         # The following triple can be used to uniquely represent a function. We use this to avoid repeats
-        triple = self.working_tree.function_name, deduction.Deduction.HashableList(self.working_tree.arg_types), c
+        triple = self.working_tree.function_name, deduction._Deduction.HashableList(self.working_tree.arg_types), c
 
         if triple in self.function_set:
             return
@@ -93,7 +93,10 @@ class Translator(ast.NodeVisitor):
         if self.working_tree.function_name == "__init__" and self.working_tree.parent_class_type and self.working_tree.parent_class_node:
             usr = self.working_tree.parent_class_type
 
+            print(usr)
+
             if usr in self.class_map:
+
                 raise NotImplemented()
             else:
                 ir_class = ir.ClassDef(usr.identifier, usr.member_types)
@@ -146,6 +149,9 @@ class Translator(ast.NodeVisitor):
     def visit_Constant(self, node):
         return ir.Constant(node.value)
 
+    def visit_List(self, node):
+        return ir.List(self.traverse(node.elts))
+
     def visit_SolitarySelf(self, node):
         return ir.SolitarySelf()
 
@@ -153,13 +159,13 @@ class Translator(ast.NodeVisitor):
         return ir.SelfVariable(node.id)
 
     def visit_SelfMemberFunction(self, node):
-        return ir.SelfFunction(node.id, self.traverse(node.args))
+        return ir.SelfFunction(node.id, self.traverse(node.args), node.types)
 
     def visit_MemberFunction(self, node):
-        return ir.MemberFunction(self.traverse(node.exp), node.id, self.traverse(node.args))
+        return ir.MemberFunction(self.traverse(node.exp), node.id, self.traverse(node.args), node.types)
 
     def visit_ConstructorCall(self, node):
         return ir.ClassConstructor(node.class_id, self.traverse(node.args))
 
     def visit_MyCall(self, node):
-        return ir.GlobalFunctionCall(node.id, self.traverse(node.args))
+        return ir.GlobalFunctionCall(node.id, self.traverse(node.args), node.types)

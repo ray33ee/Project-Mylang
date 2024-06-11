@@ -24,10 +24,11 @@ class SelfMemberFunction(ast.AST):
 
     _fields = ["id", "args"]
 
-    def __init__(self, identifier, args):
+    def __init__(self, id, args, types=None):
         super().__init__()
-        self.id = identifier
+        self.id = id
         self.args = args
+        self.types = types
 
 
 # expression.identifier(args), member function call
@@ -35,21 +36,23 @@ class MemberFunction(ast.AST):
 
     _fields = ["exp", "id", "args"]
 
-    def __init__(self, exp: ast.expr, identifier, args):
+    def __init__(self, exp: ast.expr, id, args, types=None):
         super().__init__()
         self.exp = exp
-        self.id = identifier
+        self.id = id
         self.args = args
+        self.types = types
 
 
 class MyCall(ast.AST):
 
     _fields = ["id", "args"]
 
-    def __init__(self, identifier, args):
+    def __init__(self, id, args, types=None):
         super().__init__()
-        self.id = identifier # ast.Name(identifier, ast.Load())
+        self.id = id # ast.Name(identifier, ast.Load())
         self.args = args
+        self.types = types
 
 
 class ConstructorCall(ast.AST):

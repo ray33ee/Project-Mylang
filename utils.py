@@ -5,12 +5,13 @@ import custom_nodes
 import custom_unparser
 import errors
 import ir
+import rustify
 import sugar
 import symbol_table
 import mangler
 import m_types
 from collections import OrderedDict
-
+import post
 import deduction
 import translator
 
@@ -70,6 +71,26 @@ def analysis(source):
     _ir = translator.translate(tree)
 
     print(ast.dump(_ir, indent=4))
+
+    print("##################################")
+    print("Post processing")
+    print("##################################")
+
+    p = post.post_processing(_ir)
+
+    # print(ast.dump(p, indent=4))
+
+    print("##################################")
+    print("Final rust code")
+    print("##################################")
+
+    s = rustify.rustify(p)
+
+    print(s)
+
+
+
+
 
 
 

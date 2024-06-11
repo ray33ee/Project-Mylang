@@ -32,6 +32,10 @@ class Unknown:
         self.inner = inner
 
     def mangle(self):
+
+        if self.inner is None:
+            raise "Cannot mangle incomplete unkown"
+
         return self.inner.mangle()
 
     def __eq__(self, other):
@@ -227,7 +231,7 @@ class Result(MType):
 
 
 # Used when no annotation is provided for a type, and can match any type
-class WildCard:
+class WildCard(MType):
 
     _fields = []
 

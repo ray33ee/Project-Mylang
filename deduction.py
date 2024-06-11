@@ -9,13 +9,16 @@ import ir
 
 
 def deduce(table: symbol_table.Table):
-    t = Deduction(table)
+    t = _Deduction(table)
     t.visit_FunctionDef(table.get_main().ast_node)
     return t.working_tree_node
 
 
 
-class TypeTree:
+class TypeTree(ast.AST):
+
+    _fields = ["function_name", "arg_map", "ret_type", "ast_node", "child_trees"]
+
     def __init__(self, name, arg_types, ast_node, parent, parent_class_type, parent_class_node):
         # Todo: We don't need to pass 'name' as we can deduce this from ast_node.name
         self.function_name = name
@@ -45,13 +48,13 @@ class TypeTree:
         pass
 
     def __repr__(self):
-        return f"name='{self.function_name}', subs={self.subs}"
+        return ast.dump(self, indent=4)
         return f"TypeTree(name='{self.function_name}', map={self.symbol_map}, children={self.child_trees}, class={self.parent_class_type}, ret_type={self.ret_type}, subs={self.subs})"
 
 
 
 # Translator walks the nodes and a) resolves types and b) converts code into IR
-class Deduction(ast.NodeVisitor):
+class _Deduction(ast.NodeVisitor):
 
     # Thin wrapper around lists that can be hashed
     # Be careful not to externally mutate keys
@@ -136,6 +139,60 @@ class Deduction(ast.NodeVisitor):
             return self.visit(node)
 
 
+    def recursive_compare(self, arg, annotation):
+
+        # Here we have a simple system to score an argument,annotation pair on how compatible they are.
+        # If they are completely different types (For example int and float) then they have a score of -inf (which is propagated through recursive calls)
+        # If they are the same type and not containers, this is a score of 1
+        # If they are the same type and containers, this is a score of 1 plus the scores of the inner types
+        # If they are different types but the annotation is a wildcard, this is a score of 0
+
+        if type(arg) is type(annotation):
+            if type(annotation) is m_types.Vector:
+                return self.recursive_compare(arg.element_type, annotation.element_type) + 1
+            elif type(annotation) is m_types.DynamicSet:
+                return self.recursive_compare(arg.element_type, annotation.element_type) + 1
+            elif type(annotation) is m_types.Option:
+                return self.recursive_compare(arg.contained_type, annotation.contained_type) + 1
+            elif type(annotation) is m_types.Result:
+                return self.recursive_compare(arg.ok_type, annotation.ok_type) + self.recursive_compare(arg.err_type, annotation.err_type) + 1
+            elif type(annotation) is m_types.Dictionary:
+                return self.recursive_compare(arg.key_type, annotation.key_type) + self.recursive_compare(arg.value_type, annotation.value_type) + 1
+            elif type(annotation) is m_types.Ntuple:
+                raise NotImplemented()
+            else:
+                return 1
+        else:
+            if type(annotation) is m_types.WildCard:
+                return 0
+            else:
+                return float("-inf")
+
+    def get_score(self, arg_list, candidate):
+
+        # If the number of args doesn't match, the candidate cannot be a match
+        if len(arg_list) != len(candidate.args.args):
+            return None
+
+        total_score = 0
+
+        for arg, annotate in zip(arg_list, candidate.args.args):
+            print("        **********")
+            print("        Arg")
+            print("        **********")
+            score = self.recursive_compare(arg, annotate.annotation)
+            print("        Argument Score: " + str(score))
+            total_score += score
+
+        if total_score == float("-inf"):
+            return None
+        else:
+            return total_score
+
+
+
+
+
     # Given a list of potential functions and a list of agruments, choose the most appropriate function template
     def match_function(self, arg_list, candidates):
 
@@ -143,10 +200,32 @@ class Deduction(ast.NodeVisitor):
         print("Matcher")
         print("**********")
 
-        best_choice = candidates[0]
+        print(arg_list)
 
-        for x in candidates:
-            print(ast.dump(x.ast_node))
+        best_score, best_choice = float("-inf"), None
+
+        if len(candidates) == 0:
+            print("send help")
+
+        for candidate in candidates:
+            print("    **********")
+            print("    Candidate")
+            print("    **********")
+            print("    " + ast.dump(candidate.ast_node))
+            score = self.get_score(arg_list, candidate.ast_node)
+            print("    Candidate Score: " + str(score))
+            if score is not None:
+                if score > best_score:
+                    best_score, best_choice = score, candidate
+                elif score == best_score:
+                    # 'candidate' and 'best_choice' have the same score
+                    raise "Two candidates cannot have the same score"
+
+        if best_choice is None:
+            raise "A suitable candidate could not be found"
+
+        print("Best score: " + str(best_score))
+        print("Best Candidate: " + str(ast.dump(best_choice.ast_node)))
 
         return best_choice
 
@@ -212,6 +291,8 @@ class Deduction(ast.NodeVisitor):
                     # Traverse the FunctionDef
                     self.traverse(function_table.ast_node)
 
+                    self.working_tree_node.parent.subs[node] = custom_nodes.MyCall(node.id, node.args, arg_types)
+
                     ret_type = self.working_tree_node.ret_type
                     parent = self.working_tree_node.parent
                     self.working_tree_node = parent
@@ -238,8 +319,6 @@ class Deduction(ast.NodeVisitor):
                 member_var_types = OrderedDict()
 
                 for mem in self.whole_table[node.id].member_variables:
-                    print("MEM")
-                    print(type(mem))
                     member_var_types["self." + mem.name] = m["self." + mem.name]
 
                 usr_class = m_types.UserClass(node.id, member_var_types)
@@ -281,6 +360,9 @@ class Deduction(ast.NodeVisitor):
         self.traverse(function_table.ast_node)
 
         ret_type = self.working_tree_node.ret_type
+
+        self.working_tree_node.parent.subs[node] = custom_nodes.SelfMemberFunction(node.id, node.args, arg_types)
+
         parent = self.working_tree_node.parent
         self.working_tree_node = parent
 
@@ -311,6 +393,10 @@ class Deduction(ast.NodeVisitor):
             self.traverse(function_table.ast_node)
 
             ret_type = self.working_tree_node.ret_type
+
+            self.working_tree_node.parent.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args, arg_types)
+
+
             parent = self.working_tree_node.parent
             self.working_tree_node = parent
 

@@ -237,7 +237,8 @@ class Range:
         self.index = self.index + one(self.index)
         return r
 
-def f(x: int):
+
+def f(x):
     return x
 
 def main():
@@ -245,24 +246,9 @@ def main():
     
     l = iter(r)
     
-    for i in r:
-        f(i)
-
-"""
-
-source = """
-
-def f(x: float):
-    return x
-
-def f(x: int):
-    return x
-
-def f(x):
-    return x
+    for n in l:
+        f(n)
     
-def main():
-    f(4)
 
 """
 

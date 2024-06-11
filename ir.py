@@ -14,18 +14,42 @@ class Expression(ast.AST):
     pass
 
 
-class GlobalFunctionCall(Expression):
+class FunctionCall(Expression):
+
+
+    def mangle(self):
+        mang = mangler.Name(self.id).mangle()
+
+        print(self.types)
+
+        for a in self.types:
+            mang = mang + a.mangle()
+
+        return "F" + str(len(mang)) + mang
+
+
+class GlobalFunctionCall(FunctionCall):
 
     _fields = ["id", "args"]
 
-    def __init__(self, _id, args):
+    def __init__(self, _id, args, types):
         super().__init__()
         self.id = _id
         self.args = args
+        self.types = types
 
 
 class SolitarySelf(Expression):
     pass
+
+
+class List(Expression):
+
+    _fields = ["elements"]
+
+    def __init__(self, elements):
+        super().__init__()
+        self.elemenets = elements
 
 class Constant(Expression):
 
@@ -36,25 +60,27 @@ class Constant(Expression):
         self.value = value
 
 
-class MemberFunction(Expression):
+class MemberFunction(FunctionCall):
 
     _fields = ["expr", "id", "args"]
 
-    def __init__(self, expr: Expression, _id: str, args: list[Expression]):
+    def __init__(self, expr: Expression, _id: str, args: list[Expression], types):
         super().__init__()
         self.expr = expr
         self.id = _id
         self.args = args
+        self.types = types
 
 
-class SelfFunction(Expression):
+class SelfFunction(FunctionCall):
 
     _fields = ["id", "args"]
 
-    def __init__(self, _id: str, args: list[Expression]):
+    def __init__(self, _id: str, args: list[Expression], types):
         super().__init__()
         self.id = _id
         self.args = args
+        self.types = types
 
 class SelfVariable(Expression):
 
@@ -207,7 +233,7 @@ class FunctionDef(ast.AST):
 
 class ClassDef(ast.AST):
 
-    _fields = ["name", "member_map", "functions"]
+    _fields = ["name", "member_map", "cycle", "functions"]
 
     def __init__(self, name, member_map):
         super().__init__()
@@ -218,6 +244,8 @@ class ClassDef(ast.AST):
         # Must be an ordered dict mapping agr names to types
         self.member_map = member_map
         self.functions = []
+
+        self.cycle = None
 
 
         for k in self.member_map.keys():

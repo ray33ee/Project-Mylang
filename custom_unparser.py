@@ -3,6 +3,11 @@ import ast
 import m_types
 
 
+
+def unparse(ast_obj):
+    unparser = _Unparser()
+    return unparser.visit(ast_obj)
+
 # Reimplements ast's _Unparser to work with our custom AST nodes.
 # Not needed during translation but useful for debugging
 
@@ -172,7 +177,3 @@ class _Unparser(ast._Unparser):
             self.traverse(node.ok_type)
             self.write(", ")
             self.traverse(node.err_type)
-
-def unparse(ast_obj):
-    unparser = _Unparser()
-    return unparser.visit(ast_obj)

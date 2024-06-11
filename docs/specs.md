@@ -1,4 +1,4 @@
-# Contents
+if ty# Contents
 
 - 1 [Introduction](#introduction)
 - 2 [Structural Typing](#structural_typing)
