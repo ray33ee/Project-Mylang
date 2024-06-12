@@ -96,8 +96,8 @@ class _Translator(ast.NodeVisitor):
             usr = self.working_tree.parent_class_type
 
             if usr in self.class_map:
-
-                raise NotImplemented()
+                pass
+                #raise NotImplemented()
             else:
                 l = [ir.Member(field[5:], ann.get_type()) for field, ann in usr.member_types.items()]
 
@@ -108,7 +108,7 @@ class _Translator(ast.NodeVisitor):
 
                 self.class_map[usr] = ir_class
 
-            ir_class.add_function(ir_function)
+                ir_class.add_function(ir_function)
 
 
         elif self.working_tree.parent_class_type and self.working_tree.parent_class_node:
@@ -122,6 +122,9 @@ class _Translator(ast.NodeVisitor):
 
     def visit_MonoAssign(self, node):
         return ir.LetAssign(self.traverse(node.target), self.traverse(node.value))
+
+    def visit_GetterAssign(self, node):
+        return ir.Reassign(ir.SelfVariable(node.self_id), self.traverse(node.value))
 
     def visit_Return(self, node):
         return ir.Return(self.traverse(node.value))
@@ -166,10 +169,11 @@ class _Translator(ast.NodeVisitor):
         return ir.SelfFunction(node.id, self.traverse(node.args), node.types)
 
     def visit_MemberFunction(self, node):
+        print(node.types)
         return ir.MemberFunction(self.traverse(node.exp), node.id, self.traverse(node.args), node.types)
 
     def visit_ConstructorCall(self, node):
-        return ir.ClassConstructor(node.class_id, self.traverse(node.args))
+        return ir.ClassConstructor(node.class_id, self.traverse(node.args), node.types)
 
     def visit_MyCall(self, node):
         return ir.GlobalFunctionCall(node.id, self.traverse(node.args), node.types)

@@ -1,5 +1,6 @@
 import ast
 
+import ir
 import m_types
 import mangler
 
@@ -130,10 +131,11 @@ class ClassConstructor(Expression):
 
     _fields = ["usr_class", "args"]
 
-    def __init__(self, usr_class: m_types.UserClass, args):
+    def __init__(self, usr_class: m_types.UserClass, args, types):
         super().__init__()
         self.usr_class = usr_class
         self.args = args
+        self.types = types
 
 class Statement(ast.AST):
     pass
@@ -238,8 +240,12 @@ class FunctionDef(ast.AST):
     def mangle(self):
         mang = mangler.Name(self.name).mangle()
 
+
         for a in self.args:
-            mang = mang + a.annotation.mangle()
+            if type(a) is ir.Arg:
+                mang = mang + a.annotation.mangle()
+            else:
+                mang = mang + a.mangle()
 
         return "F" + str(len(mang)) + mang
 

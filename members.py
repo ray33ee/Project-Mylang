@@ -15,7 +15,6 @@ class Members(ast.NodeVisitor):
     def __init__(self):
         self.working_function = None
         self.working_class = None
-        self.assigning = False
         self.map = {}
 
     # Convert the dictonary of class,ordered dict pairs into a dictionary of class,list pairs
@@ -59,14 +58,8 @@ class Members(ast.NodeVisitor):
 
             self.working_function = None
 
-    def visit_MonoAssign(self, node):
-        self.assigning = True
-        self.traverse(node.target)
-        self.assigning = False
-
-    def visit_SelfMemberVariable(self, node):
-        # If we are looking at an assignment in a class constructor
-        if self.working_class and self.working_function.name == "__init__" and self.assigning:
-            self.map[self.working_class.name][node.id] = None
+    def visit_GetterAssign(self, node):
+        if self.working_class and self.working_function.name == "__init__":
+            self.map[self.working_class.name][node.self_id] = None
 
 

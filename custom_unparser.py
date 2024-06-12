@@ -97,6 +97,12 @@ class _Unparser(ast._Unparser):
                     comma = True
                 self.traverse(a)
 
+    def visit_GetterAssign(self, node):
+        self.write("self.")
+        self.write(node.self_id)
+        self.write(" = ")
+        self.traverse(node.value)
+
     def visit_MyCall(self, node):
         self.write(node.id)
         with self.delimit("(", ")"):

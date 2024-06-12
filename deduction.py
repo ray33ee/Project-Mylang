@@ -267,7 +267,7 @@ class _Deduction(ast.NodeVisitor):
         # first we check for any local variables with the name
         if node.id in self.working_tree_node.symbol_map:
             # Add an entry to the substitution map
-            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(ast.Name(node.id), "__call__", node.args)
+            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(ast.Name(node.id), "__call__", node.args, self.traverse(node.args))
             # Treat the mycall 'identifier(...)' as a 'identifier.__call__(...)'
             return self.visit_MemberFunction(custom_nodes.MemberFunction(ast.Name(node.id), "__call__", node.args))
 
@@ -326,7 +326,7 @@ class _Deduction(ast.NodeVisitor):
                 print("Arg types")
                 print(arg_types)
 
-                self.working_tree_node.parent.subs[node] = custom_nodes.ConstructorCall(usr_class, node.args)
+                self.working_tree_node.parent.subs[node] = custom_nodes.ConstructorCall(usr_class, node.args, arg_types)
 
                 self.working_tree_node.parent_class_type = usr_class
 
@@ -406,6 +406,9 @@ class _Deduction(ast.NodeVisitor):
             # Expression is a built-in type, so to get the return type we look to the built_in_returns map
             b = self.built_in_returns[ex_type][node.id][self.HashableList(arg_types)]
 
+            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
+                                                                                   arg_types)
+
             # If the lookup fails, we might be able to use the right functions instead. For example
             # if __add__ fails try __radd__ instead. If radd works, replace it with `self.working_tree_node.subs`.
 
@@ -443,6 +446,11 @@ class _Deduction(ast.NodeVisitor):
             self.working_tree_node.symbol_map["self." + node.target.id] = r_value_type
         else:
             raise NotImplemented()
+
+    def visit_GetterAssign(self, node):
+        self.working_tree_node.symbol_map["self." + node.self_id] = self.traverse(node.value)
+
+
 
 
 

@@ -110,7 +110,7 @@ def main():
 
 """
 
-source = """
+source1 = """
 
 class Range:
     def __init__(start, finish, step):
@@ -141,7 +141,7 @@ def main():
 
 """
 
-source = """
+source1 = """
 
 class Test():
     def __init__():
@@ -175,7 +175,7 @@ def main():
 
 """
 
-source = """
+source1 = """
 
 def f(x):
     return x
@@ -187,7 +187,7 @@ def main():
 
 """
 
-source = """
+source1 = """
 
 
 class Wrapper:
@@ -217,7 +217,7 @@ def main():
 
 """
 
-source = """
+source1 = """
 
 class Range:
     def __init__(length):
@@ -242,13 +242,25 @@ def f(x):
     return x
 
 def main():
-    r = Range(44.0)
+    r = Range(44)
     
     l = iter(r)
     
     for n in l:
         f(n)
     
+
+"""
+
+source1 = """
+
+class Test:
+    def __init__(x):
+        self.x = x
+        
+def main():
+    t = Test(88)
+    l = Test(44.0)
 
 """
 

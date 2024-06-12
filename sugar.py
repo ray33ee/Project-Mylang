@@ -285,6 +285,7 @@ class _Sugar(ast.NodeTransformer):
             # If we have a single, non-chained assignment we can easily convert this into a MonoAssign
 
             target = node.targets[0]
+            print(type(target))
 
             if type(target) is ast.Subscript:
                 n = ast.Expr(custom_nodes.MemberFunction(self.traverse(target.value), "__setitem__",
@@ -295,9 +296,11 @@ class _Sugar(ast.NodeTransformer):
 
                 if type(target.value) is ast.Name and (self.function_is_class_init() or self.function_is_getter_or_setter(target.attr)):
                     if target.value.id == "self":
-                        return custom_nodes.MonoAssign(custom_nodes.SelfMemberVariable(target.attr), self.traverse(node.value))
+                        return custom_nodes.GetterAssign(target.attr, self.traverse(node.value))
 
                 return ast.Expr(self.member_function(target.value, f"__set_{target.attr}__", [self.traverse(node.value)]))
+            elif type(target) is custom_nodes.SelfMemberVariable:
+                raise 3
             else:
                 n = custom_nodes.MonoAssign(self.traverse(target), self.traverse(node.value))
                 ast.fix_missing_locations(n)
@@ -331,7 +334,6 @@ class _Sugar(ast.NodeTransformer):
             # 4.
 
             for target in node.targets:
-
                 if type(target) is ast.Subscript:
                     n = ast.Expr(custom_nodes.MemberFunction(self.traverse(target.value), "__setitem__", [self.traverse(target.slice), ast.Name(mangled_name, ast.Store())]))
                     ast.fix_missing_locations(n)
@@ -347,7 +349,8 @@ class _Sugar(ast.NodeTransformer):
 
                     assigns.append( ast.Expr(
                         self.member_function(target.value, f"__set_{target.attr}__", [ast.Name(mangled_name, ast.Store())])))
-
+                elif type(target) is custom_nodes.SelfMemberVariable:
+                    raise "yes"
                 else:
                     n = custom_nodes.MonoAssign(self.traverse(target), ast.Name(mangled_name, ast.Store()))
                     ast.fix_missing_locations(n)

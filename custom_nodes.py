@@ -59,10 +59,11 @@ class ConstructorCall(ast.AST):
 
     _fields = ["class_id", "args"]
 
-    def __init__(self, class_id, args):
+    def __init__(self, class_id, args, types=None):
         super().__init__()
         self.class_id = class_id
         self.args = args
+        self.types = types
 
 
 # Declare and assign. maps to Rust's let statement
@@ -85,4 +86,13 @@ class Reassign(ast.AST):
     def __init__(self, target, value):
         super().__init__()
         self.target = target
+        self.value = value
+
+class GetterAssign(ast.AST):
+
+    _fields = ["self_id", "value"]
+
+    def __init__(self, self_id, value):
+        super().__init__()
+        self.self_id = self_id
         self.value = value

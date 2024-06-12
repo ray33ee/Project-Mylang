@@ -20,9 +20,10 @@ class _Rustify(ast.NodeVisitor):
     def __init__(self):
         self.code = []
         self.indent = 0
+        self.in_class = False
 
-    def write(self, *text):
-        self.code.extend(text)
+    def write(self, text):
+        self.code.append(text)
 
     def fill(self, text=""):
         self.write("\n")
@@ -35,6 +36,13 @@ class _Rustify(ast.NodeVisitor):
         yield
         self.indent -= 1
         self.fill("}")
+
+    @contextmanager
+    def class_block(self):
+        self.in_class = True
+        yield
+        self.in_class = False
+
 
     @contextmanager
     def delimit(self, start, end):
@@ -62,11 +70,17 @@ class _Rustify(ast.NodeVisitor):
 
         self.write(str(m))
 
-    def comma_separated(self, node, start="(", end=")", separator=", "):
+    def comma_separated(self, node, start="(", end=")", separator=", ", prepend=""):
         with self.delimit(start, end):
+            self.write(prepend)
+            comma = False
             for n in node:
+                if comma:
+                    self.write(separator)
+                else:
+                    comma = True
                 self.traverse(n)
-                self.write(separator)
+
 
     def visit_Arg(self, node):
         self.traverse(node.expr)
@@ -93,14 +107,14 @@ class _Rustify(ast.NodeVisitor):
     def visit_ID(self, node):
         self.write("usize")
 
-    def visit_NTuple(self, node):
+    def visit_Ntuple(self, node):
         self.comma_separated(node.tuple_types)
 
     def visit_Vector(self, node):
         raise NotImplemented()
 
     def visit_String(self, node):
-        raise NotImplemented()
+        self.write("String")
 
     def visit_Bytes(self, node):
         raise NotImplemented()
@@ -119,6 +133,9 @@ class _Rustify(ast.NodeVisitor):
         self.write("Result")
         self.comma_separated([node.ok_type, node.err_type], "<", ">")
 
+    def visit_UserClass(self, node):
+        self.write("_Z"+node.mangle())
+
     def visit_Module(self, node):
         self.traverse(node.functions)
         self.traverse(node.classes)
@@ -128,7 +145,15 @@ class _Rustify(ast.NodeVisitor):
         self.write("struct ")
         self.write_mangled(node)
         with self.block():
-            self.comma_separated([])
+            self.fill()
+            self.comma_separated(node.member_map, "", "", ", \n    ")
+
+        self.fill()
+        self.write("impl ")
+        self.write_mangled(node)
+        with self.block():
+            with self.class_block():
+                self.traverse(node.functions)
 
     def visit_FunctionDef(self, node):
         self.fill()
@@ -136,7 +161,7 @@ class _Rustify(ast.NodeVisitor):
         self.write_mangled(node)
 
         # node.args is a
-        self.comma_separated(node.args)
+        self.comma_separated(node.args, prepend="& mut self, ")
 
 
 
@@ -146,10 +171,18 @@ class _Rustify(ast.NodeVisitor):
         with self.block():
             self.traverse(node.body)
 
+    def visit_GetterAssign(self, node):
+        with self.statement():
+            self.write("self.")
+            self.write(node.self_id)
+            self.write(" = ")
+            self.traverse(node.value)
+
+
     def visit_LetAssign(self, node):
         with self.statement():
             self.write("let mut ")
-            self.write(node.target.id)
+            self.traverse(node.target)
             self.write(" = ")
             self.traverse(node.value)
 
@@ -205,7 +238,11 @@ class _Rustify(ast.NodeVisitor):
                 self.traverse(node.else_block)
 
     def visit_ClassConstructor(self, node):
+        from mangler import Mangle
         self.write_mangled(node.usr_class)
+        self.write("::")
+
+        self.write(str(Mangle(ir.FunctionDef("__init__", node.types))))
         self.comma_separated(node.args)
 
     def visit_IRTuple(self, node):
@@ -224,6 +261,7 @@ class _Rustify(ast.NodeVisitor):
         self.comma_separated(node.args)
 
     def visit_MemberFunction(self, node):
+        print(node.id)
         self.traverse(node.expr)
         self.write(".")
         self.write_mangled(node)
@@ -233,7 +271,8 @@ class _Rustify(ast.NodeVisitor):
         self.write(str(node.value))
 
     def visit_SolitarySelf(self, node):
-        raise "Solitary self thing not done yet"
+        self.write("self")
+        #raise "Solitary self thing not done yet"
 
     def visit_GlobalFunctionCall(self, node):
         self.write_mangled(node)
