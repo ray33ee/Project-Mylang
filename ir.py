@@ -10,6 +10,26 @@ from collections import OrderedDict
 # mylang source and is itself converted into rust source code.
 
 
+class Arg(ast.AST):
+
+    _fields = ["expr", "annotation"]
+
+    def __init__(self, expr, annotation):
+        super().__init__()
+        self.expr = expr
+        self.annotation = annotation
+
+
+class Member(ast.AST):
+
+    _fields = ["id", "annotation"]
+
+    def __init__(self, id, annotation):
+        super().__init__()
+        self.id = id
+        self.annotation = annotation
+
+
 class Expression(ast.AST):
     pass
 
@@ -19,8 +39,6 @@ class FunctionCall(Expression):
 
     def mangle(self):
         mang = mangler.Name(self.id).mangle()
-
-        print(self.types)
 
         for a in self.types:
             mang = mang + a.mangle()
@@ -206,12 +224,7 @@ class FunctionDef(ast.AST):
         self.body = []
         self.ret_type = m_types.Ntuple([])
 
-        # Must be an ordered dict mapping arg names to arg types
-        assert type(args) is OrderedDict
         self.args = args
-
-        for k in self.args.keys():
-            self.args[k] = self.args[k].get_type()
 
     def add_statement(self, statement: Statement):
         self.body.append(statement)
@@ -225,8 +238,8 @@ class FunctionDef(ast.AST):
     def mangle(self):
         mang = mangler.Name(self.name).mangle()
 
-        for a in self.args.values():
-            mang = mang + a.mangle()
+        for a in self.args:
+            mang = mang + a.annotation.mangle()
 
         return "F" + str(len(mang)) + mang
 
@@ -239,17 +252,12 @@ class ClassDef(ast.AST):
         super().__init__()
         self.name = name
 
-        assert type(member_map) is OrderedDict
-
         # Must be an ordered dict mapping agr names to types
         self.member_map = member_map
         self.functions = []
 
         self.cycle = None
 
-
-        for k in self.member_map.keys():
-            self.member_map[k] = self.member_map[k].get_type()
 
     def add_function(self, function: FunctionDef):
         self.functions.append(function)
@@ -258,8 +266,16 @@ class ClassDef(ast.AST):
         return f"Class('{self.name}', {self.member_map}, {repr(self.functions)})"
 
     def mangle(self):
+
+        # convert the member_map to an ordered dict
+        d = OrderedDict()
+
+        for member in self.member_map:
+            d["self." + member.id] = member.annotation
+
+
         # Here we leverage the UserClass mangling to do our work for us
-        return m_types.UserClass(self.name, self.member_map).mangle()
+        return m_types.UserClass(self.name, d).mangle()
 
 
 

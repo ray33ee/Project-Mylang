@@ -83,8 +83,10 @@ class _Translator(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node):
 
+
+
         # Create a new IR entry
-        ir_function = ir.FunctionDef(self.working_tree.function_name, self.working_tree.arg_map)
+        ir_function = ir.FunctionDef(self.working_tree.function_name, [ir.Arg(ir.Identifier(id), ann.get_type()) for id, ann in self.working_tree.arg_map.items()])
         ir_function.set_return_type(self.working_tree.ret_type.get_type())
 
         # Traverse the function body
@@ -93,13 +95,15 @@ class _Translator(ast.NodeVisitor):
         if self.working_tree.function_name == "__init__" and self.working_tree.parent_class_type and self.working_tree.parent_class_node:
             usr = self.working_tree.parent_class_type
 
-            print(usr)
-
             if usr in self.class_map:
 
                 raise NotImplemented()
             else:
-                ir_class = ir.ClassDef(usr.identifier, usr.member_types)
+                l = [ir.Member(field[5:], ann.get_type()) for field, ann in usr.member_types.items()]
+
+
+
+                ir_class = ir.ClassDef(usr.identifier, l)
 
 
                 self.class_map[usr] = ir_class

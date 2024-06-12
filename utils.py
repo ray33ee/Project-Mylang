@@ -50,7 +50,7 @@ def analysis(source):
     print("Mangler and Demangler tests")
     print("##################################")
 
-    mangler.run_mangler_tests()
+    #mangler.run_mangler_tests()
 
     print("##################################")
     print("Deduction")

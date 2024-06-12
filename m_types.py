@@ -1,8 +1,9 @@
 from collections import OrderedDict
+import ast
 
 # The following classes represent all the 'types' that Mylang objects can be
 
-class MType:
+class MType(ast.AST):
     def mangle(self) -> str:
         pass
 
@@ -88,6 +89,7 @@ class Char(MType):
 class Floating(MType):
 
     _fields = []
+
     def mangle(self):
         return "f"
 

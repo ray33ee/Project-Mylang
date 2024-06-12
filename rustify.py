@@ -3,6 +3,9 @@ import ast
 import ir
 from contextlib import contextmanager
 
+import m_types
+
+
 # Convert our Rust IR AST into RUst source code
 def rustify(p: ir.Module):
     r = _Rustify()
@@ -65,18 +68,73 @@ class _Rustify(ast.NodeVisitor):
                 self.traverse(n)
                 self.write(separator)
 
+    def visit_Arg(self, node):
+        self.traverse(node.expr)
+        self.write(": ")
+        self.traverse(node.annotation)
+
+    def visit_Member(self, node):
+        self.write(node.id)
+        self.write(": ")
+        self.traverse(node.annotation)
+
+    def visit_Boolean(self, node):
+        self.write("bool")
+
+    def visit_Integer(self, node):
+        self.write("i64")
+
+    def visit_Floating(self, node):
+        return self.write("f64")
+
+    def visit_Char(self, node):
+        raise NotImplemented()
+
+    def visit_ID(self, node):
+        self.write("usize")
+
+    def visit_NTuple(self, node):
+        self.comma_separated(node.tuple_types)
+
+    def visit_Vector(self, node):
+        raise NotImplemented()
+
+    def visit_String(self, node):
+        raise NotImplemented()
+
+    def visit_Bytes(self, node):
+        raise NotImplemented()
+
+    def visit_Dictionary(self, node):
+        raise NotImplemented()
+
+    def visit_DynamicSet(self, node):
+        raise NotImplemented()
+
+    def visit_Option(self, node):
+        self.write("Option")
+        self.comma_separated([node.contained_type], "<", ">")
+
+    def visit_Result(self, node):
+        self.write("Result")
+        self.comma_separated([node.ok_type, node.err_type], "<", ">")
+
     def visit_Module(self, node):
         self.traverse(node.functions)
         self.traverse(node.classes)
 
     def visit_ClassDef(self, node):
-        pass
+        self.fill()
+        self.write("struct ")
+        self.write_mangled(node)
+        with self.block():
+            self.comma_separated([])
 
     def visit_FunctionDef(self, node):
+        self.fill()
         self.write("fn ")
         self.write_mangled(node)
 
-        raise "node.args is a OrderedDict and not an AST node, so we have trouble traversing it"
         # node.args is a
         self.comma_separated(node.args)
 
