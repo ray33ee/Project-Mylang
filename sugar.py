@@ -6,47 +6,6 @@ import mangler
 import base64
 
 
-# Used by chained assignments to unique variable names which follows some rules:
-# 1. Mangled variables must not conflict with any user created names
-# 2. Mangled variables must not conflict with any other mangled variables
-class VariableMangler:
-    def __init__(self):
-        # Every time we create a new variable we increment the index and use it in the name to guarantee uniqueness with
-        # other temporary variables
-        self.index = 0
-
-        # Set of variables (both user defined and created by this mangler) which we use to avoid conflicts
-        self.taken_names = set()
-
-    # When either a new variable is manged or we come across a new variable, we must register it
-    def register_variable(self, name):
-        self.taken_names.add(name)
-
-    # Take the taken names set and use the names to create a unique-ish salt. Probably overkill, but adds
-    # a bit more uniqueness than self.index alone.
-
-    # I think this function is a bit overkill so I'm disabling it (by returning "") but keeping it just in case
-    def get_salt(self):
-        return ""
-        return str(hash(str(self.taken_names)))
-
-    def get_variable(self):
-        # Keep trying to make a variable until we have a unique name
-        n = ""
-        while True:
-            n = self.mangled()
-
-            if n not in self.taken_names:
-                break
-        # Once we have a unique name, register it
-        self.register_variable(n)
-        return n
-
-    def mangled(self):
-        self.index += 1
-        return "_Z" + mangler.Name("tmp_var_mangd").mangle() + "V" + str(self.index) + "H" + self.get_salt()
-
-
 def sugar(node: ast.AST):
     return _Sugar().visit(node)
 
@@ -123,7 +82,6 @@ class _Sugar(ast.NodeTransformer):
         if not annotation:
             return m_types.WildCard()
         if type(annotation) is ast.Constant:
-            print(type(annotation.value))
             if annotation.value == ...:
                 return m_types.WildCard()
             else:
@@ -186,10 +144,6 @@ class _Sugar(ast.NodeTransformer):
 
     def visit_arg(self, node):
 
-        print(ast.dump(node))
-
-
-
         annotation = self.resolve_annotation(node.annotation)
 
         arg = ast.arg(arg=node.arg, annotation=annotation)
@@ -200,7 +154,7 @@ class _Sugar(ast.NodeTransformer):
 
     def visit_FunctionDef(self, node):
         self.working_function = node
-        self.variable_mangler = VariableMangler()
+        self.variable_mangler = mangler.VariableMangler()
 
         f = ast.FunctionDef(node.name, self.traverse(node.args), self.flatten(self.traverse(node.body)), node.decorator_list, node.returns, node.type_comment, node.type_params)
         ast.fix_missing_locations(f)
@@ -285,7 +239,6 @@ class _Sugar(ast.NodeTransformer):
             # If we have a single, non-chained assignment we can easily convert this into a MonoAssign
 
             target = node.targets[0]
-            print(type(target))
 
             if type(target) is ast.Subscript:
                 n = ast.Expr(custom_nodes.MemberFunction(self.traverse(target.value), "__setitem__",
@@ -299,8 +252,6 @@ class _Sugar(ast.NodeTransformer):
                         return custom_nodes.GetterAssign(target.attr, self.traverse(node.value))
 
                 return ast.Expr(self.member_function(target.value, f"__set_{target.attr}__", [self.traverse(node.value)]))
-            elif type(target) is custom_nodes.SelfMemberVariable:
-                raise 3
             else:
                 n = custom_nodes.MonoAssign(self.traverse(target), self.traverse(node.value))
                 ast.fix_missing_locations(n)
@@ -343,14 +294,12 @@ class _Sugar(ast.NodeTransformer):
 
                     if type(target.value) is ast.Name and (self.function_is_class_init() or self.function_is_getter_or_setter(target.attr)):
                         if target.value.id == "self":
-                            assigns.append( custom_nodes.MonoAssign(custom_nodes.SelfMemberVariable(target.attr),
+                            assigns.append( custom_nodes.GetterAssign(target.attr,
                                                            ast.Name(mangled_name, ast.Store())))
                             continue
 
                     assigns.append( ast.Expr(
                         self.member_function(target.value, f"__set_{target.attr}__", [ast.Name(mangled_name, ast.Store())])))
-                elif type(target) is custom_nodes.SelfMemberVariable:
-                    raise "yes"
                 else:
                     n = custom_nodes.MonoAssign(self.traverse(target), ast.Name(mangled_name, ast.Store()))
                     ast.fix_missing_locations(n)
@@ -425,14 +374,12 @@ class _Sugar(ast.NodeTransformer):
         if (op is ast.Is) or (op is ast.IsNot) or (op is ast.In) or (op is ast.NotIn):
             raise NotImplemented()
 
-        return self.member_function(left, compare_op_mapping[type(op)],
-                                           [right])
+        return self.member_function(left, compare_op_mapping[type(op)], [right])
 
     def visit_Slice(self, node):
         # replace a slice a:b:c with slice(a, b, c)
         # We need to think about how we will represent 'None' in mylang before we finish this
         raise NotImplemented()
-
 
     def visit_Subscript(self, node):
         return self.member_function(node.value, "__getitem__", [node.slice])

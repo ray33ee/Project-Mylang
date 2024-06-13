@@ -10,6 +10,8 @@ import symbol_table
 import custom_unparser
 import mangler
 import m_types
+import logging
+import sys
 
 source = """
 
@@ -264,8 +266,9 @@ def main():
 
 """
 
+logger = logging.getLogger(__name__)
+
+logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)  #
+
 utils.analysis(source)
 
-t = symtable.symtable(source, "yes", "exec")
-
-print(t)

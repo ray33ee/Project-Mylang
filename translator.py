@@ -1,12 +1,16 @@
 import ast
 from collections import OrderedDict
-
+import logging
 import deduction
 import ir
 
+logger = logging.getLogger(__name__)
 
 def translate(tree):
     t = _Translator(tree)
+    logger.debug("**************")
+    logger.debug("Mini Tree")
+    logger.debug("**************")
     t.climb_tree()
     m = t.module
 
@@ -44,7 +48,7 @@ class _Translator(ast.NodeVisitor):
         if triple in self.function_set:
             return
 
-        print(" " * depth * 4 + self.working_tree.function_name)
+        logger.debug("    " * depth + self.working_tree.function_name)
 
         self.function_set.add(triple)
 
@@ -93,6 +97,7 @@ class _Translator(ast.NodeVisitor):
         ir_function.body = self.traverse(node.body)
 
         if self.working_tree.function_name == "__init__" and self.working_tree.parent_class_type and self.working_tree.parent_class_node:
+            # Constructor
             usr = self.working_tree.parent_class_type
 
             if usr in self.class_map:
@@ -115,10 +120,14 @@ class _Translator(ast.NodeVisitor):
             # Member function
             usr = self.working_tree.parent_class_type
 
-            self.class_map[usr].add_function(ir_function)
+            self.class_map[usr].add_function(ir.MemberFunctionDef(ir_function))
         else:
             # Global function
-            self.module.add_function(ir_function)
+            if ir_function.name == "main":
+                self.module.add_function(ir.MainFunctionDef(ir_function))
+            else:
+                self.module.add_function(ir_function)
+
 
     def visit_MonoAssign(self, node):
         return ir.LetAssign(self.traverse(node.target), self.traverse(node.value))
@@ -169,7 +178,6 @@ class _Translator(ast.NodeVisitor):
         return ir.SelfFunction(node.id, self.traverse(node.args), node.types)
 
     def visit_MemberFunction(self, node):
-        print(node.types)
         return ir.MemberFunction(self.traverse(node.exp), node.id, self.traverse(node.args), node.types)
 
     def visit_ConstructorCall(self, node):

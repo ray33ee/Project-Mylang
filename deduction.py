@@ -6,6 +6,9 @@ import m_types
 import symbol_table
 from collections import OrderedDict
 import ir
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def deduce(table: symbol_table.Table):
@@ -49,7 +52,6 @@ class TypeTree(ast.AST):
 
     def __repr__(self):
         return ast.dump(self, indent=4)
-        return f"TypeTree(name='{self.function_name}', map={self.symbol_map}, children={self.child_trees}, class={self.parent_class_type}, ret_type={self.ret_type}, subs={self.subs})"
 
 
 
@@ -177,11 +179,11 @@ class _Deduction(ast.NodeVisitor):
         total_score = 0
 
         for arg, annotate in zip(arg_list, candidate.args.args):
-            print("        **********")
-            print("        Arg")
-            print("        **********")
+            logger.debug("        **********")
+            logger.debug("        Arg")
+            logger.debug("        **********")
             score = self.recursive_compare(arg, annotate.annotation)
-            print("        Argument Score: " + str(score))
+            logger.debug("        Argument Score: " + str(score))
             total_score += score
 
         if total_score == float("-inf"):
@@ -196,24 +198,24 @@ class _Deduction(ast.NodeVisitor):
     # Given a list of potential functions and a list of agruments, choose the most appropriate function template
     def match_function(self, arg_list, candidates):
 
-        print("**********")
-        print("Matcher")
-        print("**********")
+        logger.debug("**********")
+        logger.debug("Matcher")
+        logger.debug("**********")
 
-        print(arg_list)
+        logger.debug(arg_list)
 
         best_score, best_choice = float("-inf"), None
 
         if len(candidates) == 0:
-            print("send help")
+            raise "There should always be at least one candidate"
 
         for candidate in candidates:
-            print("    **********")
-            print("    Candidate")
-            print("    **********")
-            print("    " + ast.dump(candidate.ast_node))
+            logger.debug("    **********")
+            logger.debug("    Candidate")
+            logger.debug("    **********")
+            logger.debug("    " + ast.dump(candidate.ast_node))
             score = self.get_score(arg_list, candidate.ast_node)
-            print("    Candidate Score: " + str(score))
+            logger.debug("    Candidate Score: " + str(score))
             if score is not None:
                 if score > best_score:
                     best_score, best_choice = score, candidate
@@ -224,8 +226,8 @@ class _Deduction(ast.NodeVisitor):
         if best_choice is None:
             raise "A suitable candidate could not be found"
 
-        print("Best score: " + str(best_score))
-        print("Best Candidate: " + str(ast.dump(best_choice.ast_node)))
+        logger.debug("Best score: " + str(best_score))
+        logger.debug("Best Candidate: " + str(ast.dump(best_choice.ast_node)))
 
         return best_choice
 
@@ -323,8 +325,8 @@ class _Deduction(ast.NodeVisitor):
 
                 usr_class = m_types.UserClass(node.id, member_var_types)
 
-                print("Arg types")
-                print(arg_types)
+                logger.debug("Arg types")
+                logger.debug(arg_types)
 
                 self.working_tree_node.parent.subs[node] = custom_nodes.ConstructorCall(usr_class, node.args, arg_types)
 

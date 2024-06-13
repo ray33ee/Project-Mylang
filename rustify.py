@@ -2,16 +2,17 @@ import ast
 
 import ir
 from contextlib import contextmanager
-
+import logging
 import m_types
 
+logger = logging.getLogger(__name__)
 
 # Convert our Rust IR AST into RUst source code
 def rustify(p: ir.Module):
     r = _Rustify()
     r.visit(p)
 
-    print(r.code)
+    logger.debug(r.code)
 
     return "".join(r.code)
 
@@ -155,21 +156,37 @@ class _Rustify(ast.NodeVisitor):
             with self.class_block():
                 self.traverse(node.functions)
 
-    def visit_FunctionDef(self, node):
+    def generic_function(self, node, is_main=False, prepend=""):
         self.fill()
         self.write("fn ")
-        self.write_mangled(node)
 
-        # node.args is a
-        self.comma_separated(node.args, prepend="& mut self, ")
+        if is_main:
+            self.write("main")
+        else:
+            self.write_mangled(node)
 
-
+        self.comma_separated(node.args, prepend=prepend)
 
         if node.ret_type.mangle() != "t0":  # If the return type is not unit type, (), display it
             self.write(" -> ")
             self.traverse(node.ret_type)
         with self.block():
             self.traverse(node.body)
+
+    def visit_FunctionDef(self, node):
+        self.generic_function(node)
+
+    def visit_MainFunctionDef(self, node):
+        self.generic_function(node, is_main=True)
+
+    def visit_MemberFunctionDef(self, node):
+
+        if len(node.args) == 0:
+            prepend = "& mut self"
+        else:
+            prepend = "& mut self, "
+
+        self.generic_function(node, prepend=prepend)
 
     def visit_GetterAssign(self, node):
         with self.statement():
@@ -261,7 +278,6 @@ class _Rustify(ast.NodeVisitor):
         self.comma_separated(node.args)
 
     def visit_MemberFunction(self, node):
-        print(node.id)
         self.traverse(node.expr)
         self.write(".")
         self.write_mangled(node)
@@ -272,7 +288,7 @@ class _Rustify(ast.NodeVisitor):
 
     def visit_SolitarySelf(self, node):
         self.write("self")
-        #raise "Solitary self thing not done yet"
+        logger.warning("Solitary self is not implemented yet. Rustified code may not work as expected")
 
     def visit_GlobalFunctionCall(self, node):
         self.write_mangled(node)

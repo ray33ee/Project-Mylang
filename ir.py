@@ -250,6 +250,23 @@ class FunctionDef(ast.AST):
         return "F" + str(len(mang)) + mang
 
 
+class MainFunctionDef(FunctionDef):
+
+    def __init__(self, ir_func: FunctionDef):
+        super().__init__("main", [])
+        self.body = ir_func.body
+        self.ret_type = ir_func.ret_type
+
+
+class MemberFunctionDef(FunctionDef):
+
+    def __init__(self, ir_func: FunctionDef):
+        super().__init__(ir_func.name, ir_func.args)
+        self.body = ir_func.body
+        self.ret_type = ir_func.ret_type
+
+
+
 class ClassDef(ast.AST):
 
     _fields = ["name", "member_map", "cycle", "functions"]

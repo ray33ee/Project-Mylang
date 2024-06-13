@@ -15,78 +15,76 @@ import post
 import deduction
 import translator
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def analysis(source):
     # Create a python AST from the source code
     my_ast = ast.parse(source, mode='exec')
 
-    # Create a python symtable from the source code
-    table = symtable.symtable(source, "", compile_type="exec")
-
     # Convert certain operations in to their syntactic sugar equivalent
     sugar.sugar(my_ast)
 
-    print("##################################")
-    print("Abstract Syntax Tree")
-    print("##################################")
+    logger.debug("##################################")
+    logger.debug("Abstract Syntax Tree")
+    logger.debug("##################################")
 
-    print(ast.dump(my_ast, indent=4))
+    logger.debug(ast.dump(my_ast, indent=4))
 
-    print("##################################")
-    print("Unparsed content")
-    print("##################################")
+    logger.debug("##################################")
+    logger.debug("Unparsed content")
+    logger.debug("##################################")
 
-    print(custom_unparser.unparse(my_ast))
+    logger.debug(custom_unparser.unparse(my_ast))
 
-    print("##################################")
-    print("Symbol Table")
-    print("##################################")
+    logger.debug("##################################")
+    logger.debug("Symbol Table")
+    logger.debug("##################################")
 
     # Get the Mylang AST
     t = symbol_table.Table(my_ast)
-    print(t)
+    logger.debug(t)
 
-    print("##################################")
-    print("Mangler and Demangler tests")
-    print("##################################")
+    logger.debug("##################################")
+    logger.debug("Mangler and Demangler tests")
+    logger.debug("##################################")
 
     #mangler.run_mangler_tests()
 
-    print("##################################")
-    print("Deduction")
-    print("##################################")
+    logger.debug("##################################")
+    logger.debug("Deduction")
+    logger.debug("##################################")
 
     tree = deduction.deduce(t)
 
-    print(tree)
-    print(tree.symbol_map)
+    logger.debug(tree)
+    logger.debug(tree.symbol_map)
 
-    for k, v in tree.subs.items():
-        print(f"{ast.dump(k)}: {ast.dump(v)}")
-
-    print("##################################")
-    print("Translation")
-    print("##################################")
+    logger.debug("##################################")
+    logger.debug("Translation")
+    logger.debug("##################################")
 
     _ir = translator.translate(tree)
 
-    print(ast.dump(_ir, indent=4))
+    logger.debug(ast.dump(_ir, indent=4))
 
-    print("##################################")
-    print("Post processing")
-    print("##################################")
+    logger.debug("##################################")
+    logger.debug("Post processing")
+    logger.debug("##################################")
 
     p = post.post_processing(_ir)
 
     # print(ast.dump(p, indent=4))
 
-    print("##################################")
-    print("Final rust code")
-    print("##################################")
+    logger.debug("##################################")
+    logger.debug("Final rust code")
+    logger.debug("##################################")
 
     s = rustify.rustify(p)
 
-    print(s)
+    logger.debug(s)
 
 
 
