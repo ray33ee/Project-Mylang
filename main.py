@@ -75,9 +75,6 @@ def main():
 
 	c4 = c1 + 5
 
-	print(c1)
-	print(c2)
-	print(c3)
 
 """
 
@@ -112,7 +109,7 @@ def main():
 
 """
 
-source1 = """
+source = """
 
 class Range:
     def __init__(start, finish, step):
@@ -121,7 +118,7 @@ class Range:
         self.step = step
         
     def __set_i__(i):
-        self.i = a = i
+        self.i = i
         
     def __get_i__():
         return self.i
@@ -143,7 +140,7 @@ def main():
 
 """
 
-source1 = """
+source = """
 
 class Test():
     def __init__():
@@ -177,7 +174,7 @@ def main():
 
 """
 
-source1 = """
+source = """
 
 def f(x):
     return x
@@ -189,7 +186,7 @@ def main():
 
 """
 
-source1 = """
+source = """
 
 
 class Wrapper:
@@ -219,7 +216,7 @@ def main():
 
 """
 
-source1 = """
+source = """
 
 class Range:
     def __init__(length):
@@ -254,15 +251,28 @@ def main():
 
 """
 
-source1 = """
+source = """
 
 class Test:
     def __init__(x):
-        self.x = x
+        self.x = float(x)
         
 def main():
     t = Test(88)
     l = Test(44.0)
+
+"""
+
+source = """
+
+def f(x):
+    return x
+
+def main():
+    l = []
+    l.append(4)
+    f(l)
+    
 
 """
 

@@ -23,6 +23,9 @@ class _Unparser(ast._Unparser):
             self.write(": ")
             self.traverse(node.annotation)
 
+    def visit_InitFunctionDef(self, node):
+        self.visit_FunctionDef(node)
+
     def visit_Integer(self, node):
         self.write("int")
 
@@ -98,8 +101,15 @@ class _Unparser(ast._Unparser):
                 self.traverse(a)
 
     def visit_GetterAssign(self, node):
+        self.fill()
         self.write("self.")
         self.write(node.self_id)
+        self.write(" = ")
+        self.traverse(node.value)
+
+    def visit_InitAssign(self, node):
+        self.fill()
+        self.write(node.mangled_member)
         self.write(" = ")
         self.traverse(node.value)
 

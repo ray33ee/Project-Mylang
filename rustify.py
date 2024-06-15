@@ -4,6 +4,7 @@ import ir
 from contextlib import contextmanager
 import logging
 import m_types
+import mangler
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,7 @@ class _Rustify(ast.NodeVisitor):
             self.visit(node)
 
     def write_mangled(self, item):
+
         import mangler
 
         m = mangler.Mangle(item)
@@ -112,7 +114,8 @@ class _Rustify(ast.NodeVisitor):
         self.comma_separated(node.tuple_types)
 
     def visit_Vector(self, node):
-        raise NotImplemented()
+        self.write("Vec")
+        logger.warning("Rustifying a m_type.Vector is not implemented yet")
 
     def visit_String(self, node):
         self.write("String")
@@ -156,7 +159,7 @@ class _Rustify(ast.NodeVisitor):
             with self.class_block():
                 self.traverse(node.functions)
 
-    def generic_function(self, node, is_main=False, prepend=""):
+    def generic_function(self, node, is_main=False, prepend="", members=None):
         self.fill()
         self.write("fn ")
 
@@ -167,11 +170,26 @@ class _Rustify(ast.NodeVisitor):
 
         self.comma_separated(node.args, prepend=prepend)
 
-        if node.ret_type.mangle() != "t0":  # If the return type is not unit type, (), display it
+        if node.ret_type.mangle() != "t0" or members:  # If the return type is not unit type, (), display it
             self.write(" -> ")
-            self.traverse(node.ret_type)
+            if members:
+                self.write("Self")
+            else:
+                self.traverse(node.ret_type)
         with self.block():
             self.traverse(node.body)
+
+            if members:
+                self.fill()
+                self.write("Self ")
+                with self.block():
+                    for n in members:
+                        self.fill()
+                        self.write(n)
+                        self.write(": ")
+                        self.write(mangler.MemberVariable(n).mangle())
+                        self.write(",")
+
 
     def visit_FunctionDef(self, node):
         self.generic_function(node)
@@ -187,6 +205,11 @@ class _Rustify(ast.NodeVisitor):
             prepend = "& mut self, "
 
         self.generic_function(node, prepend=prepend)
+
+    def visit_InitFunctionDef(self, node):
+        self.generic_function(node, members=node.member_list)
+
+
 
     def visit_GetterAssign(self, node):
         with self.statement():
@@ -284,7 +307,15 @@ class _Rustify(ast.NodeVisitor):
         self.comma_separated(node.args)
 
     def visit_Constant(self, node):
-        self.write(str(node.value))
+        if type(node.value) is str:
+            self.write(f'"{str(node.value)}"')
+        elif type(node.value) is bool:
+            self.write(str(node.value).lower())
+        else:
+            self.write(str(node.value))
+
+    def visit_Tuple(self, node):
+        self.comma_separated(node.elements)
 
     def visit_SolitarySelf(self, node):
         self.write("self")

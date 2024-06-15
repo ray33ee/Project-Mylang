@@ -156,7 +156,11 @@ class _Sugar(ast.NodeTransformer):
         self.working_function = node
         self.variable_mangler = mangler.VariableMangler()
 
-        f = ast.FunctionDef(node.name, self.traverse(node.args), self.flatten(self.traverse(node.body)), node.decorator_list, node.returns, node.type_comment, node.type_params)
+        if not self.function_is_class_init():
+            f = ast.FunctionDef(node.name, self.traverse(node.args), self.flatten(self.traverse(node.body)), node.decorator_list, node.returns, node.type_comment, node.type_params)
+        else:
+            f = custom_nodes.InitFunctionDef(self.traverse(node.args), self.flatten(self.traverse(node.body)), node.decorator_list, node.returns, node.type_comment, node.type_params)
+
         ast.fix_missing_locations(f)
 
         self.variable_mangler = None
@@ -247,9 +251,12 @@ class _Sugar(ast.NodeTransformer):
                 return n
             elif type(target) is ast.Attribute:
 
-                if type(target.value) is ast.Name and (self.function_is_class_init() or self.function_is_getter_or_setter(target.attr)):
+                if type(target.value) is ast.Name:
                     if target.value.id == "self":
-                        return custom_nodes.GetterAssign(target.attr, self.traverse(node.value))
+                        if self.function_is_getter_or_setter(target.attr):
+                            return custom_nodes.GetterAssign(target.attr, self.traverse(node.value))
+                        elif self.function_is_class_init():
+                            return custom_nodes.InitAssign(target.attr, self.traverse(node.value))
 
                 return ast.Expr(self.member_function(target.value, f"__set_{target.attr}__", [self.traverse(node.value)]))
             else:
@@ -292,11 +299,15 @@ class _Sugar(ast.NodeTransformer):
                 elif type(target) is ast.Attribute:
                     self.member_function(target.value, f"__set_{target.attr}__", [ast.Name(mangled_name, ast.Store())])
 
-                    if type(target.value) is ast.Name and (self.function_is_class_init() or self.function_is_getter_or_setter(target.attr)):
+                    if type(target.value) is ast.Name:
                         if target.value.id == "self":
-                            assigns.append( custom_nodes.GetterAssign(target.attr,
-                                                           ast.Name(mangled_name, ast.Store())))
-                            continue
+                            if self.function_is_getter_or_setter(target.attr):
+                                assigns.append(custom_nodes.GetterAssign(target.attr,
+                                                                         ast.Name(mangled_name, ast.Store())))
+                                continue
+                            elif self.function_is_class_init():
+                                assigns.append(custom_nodes.InitAssign(target.attr, ast.Name(mangled_name, ast.Store())))
+                                continue
 
                     assigns.append( ast.Expr(
                         self.member_function(target.value, f"__set_{target.attr}__", [ast.Name(mangled_name, ast.Store())])))

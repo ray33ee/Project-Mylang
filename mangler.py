@@ -89,6 +89,14 @@ class VariableMangler:
 
 
 
+class MemberVariable:
+    def __init__(self, id):
+        self.id = id
+
+    def mangle(self):
+        return "_Z" + Name(["self", self.id]).mangle() + "V"
+
+
 def mangler_test_function(obj, verbose=False):
 
     if type(obj) is list:

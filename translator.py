@@ -96,27 +96,7 @@ class _Translator(ast.NodeVisitor):
         # Traverse the function body
         ir_function.body = self.traverse(node.body)
 
-        if self.working_tree.function_name == "__init__" and self.working_tree.parent_class_type and self.working_tree.parent_class_node:
-            # Constructor
-            usr = self.working_tree.parent_class_type
-
-            if usr in self.class_map:
-                pass
-                #raise NotImplemented()
-            else:
-                l = [ir.Member(field[5:], ann.get_type()) for field, ann in usr.member_types.items()]
-
-
-
-                ir_class = ir.ClassDef(usr.identifier, l)
-
-
-                self.class_map[usr] = ir_class
-
-                ir_class.add_function(ir_function)
-
-
-        elif self.working_tree.parent_class_type and self.working_tree.parent_class_node:
+        if self.working_tree.parent_class_type and self.working_tree.parent_class_node:
             # Member function
             usr = self.working_tree.parent_class_type
 
@@ -128,6 +108,32 @@ class _Translator(ast.NodeVisitor):
             else:
                 self.module.add_function(ir_function)
 
+    def visit_InitFunctionDef(self, node):
+
+
+        # Create a new IR entry
+        ir_function = ir.InitFunctionDef(self.working_tree.function_name, [ir.Arg(ir.Identifier(id), ann.get_type()) for id, ann in self.working_tree.arg_map.items()], node.member_list)
+        ir_function.set_return_type(self.working_tree.ret_type.get_type())
+
+        # Traverse the function body
+        ir_function.body = self.traverse(node.body)
+
+
+        # Constructor
+        usr = self.working_tree.parent_class_type
+
+
+
+        l = [ir.Member(field[5:], ann.get_type()) for field, ann in usr.member_types.items()]
+
+
+        if usr not in self.class_map:
+            ir_class = ir.ClassDef(usr.identifier, l)
+            self.class_map[usr] = ir_class
+        else:
+            ir_class = self.class_map[usr]
+
+        ir_class.add_function(ir_function)
 
     def visit_MonoAssign(self, node):
         return ir.LetAssign(self.traverse(node.target), self.traverse(node.value))
@@ -168,6 +174,9 @@ class _Translator(ast.NodeVisitor):
     def visit_List(self, node):
         return ir.List(self.traverse(node.elts))
 
+    def visit_Tuple(self, node):
+        return ir.Tuple(self.traverse(node.elts))
+
     def visit_SolitarySelf(self, node):
         return ir.SolitarySelf()
 
@@ -185,3 +194,6 @@ class _Translator(ast.NodeVisitor):
 
     def visit_MyCall(self, node):
         return ir.GlobalFunctionCall(node.id, self.traverse(node.args), node.types)
+
+    def visit_InitAssign(self, node):
+        return ir.LetAssign(ir.Identifier(node.mangled_member), self.traverse(node.value))

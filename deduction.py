@@ -106,6 +106,8 @@ class _Deduction(ast.NodeVisitor):
             "__real__": { HashableList(): m_types.Floating()  },
             "__imag__": { HashableList(): m_types.Floating()  },
 
+            "__float__": {HashableList(): m_types.Floating()},
+
             "__zero__": {HashableList(): m_types.Floating()},
             "__one__": {HashableList(): m_types.Floating()},
         },
@@ -117,11 +119,17 @@ class _Deduction(ast.NodeVisitor):
 
             "__eq__": { HashableList([m_types.Integer()]): m_types.Boolean()},
 
+            "__float__": {HashableList(): m_types.Floating()},
+
             "__next__": {HashableList(): m_types.Option(m_types.Integer())},
 
             "__zero__": {HashableList(): m_types.Integer()},
             "__one__": {HashableList(): m_types.Integer()},
         },
+
+        m_types.Vector: {
+            "__getitem__": {HashableList(): "element"}
+        }
     }
 
     def __init__(self, table: symbol_table.Table):
@@ -379,6 +387,9 @@ class _Deduction(ast.NodeVisitor):
         if type(ex_type) is m_types.Vector and node.id == "append":
             t = arg_types[0]
             ex_type.element_type.inner = t
+            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
+                                                                                   arg_types)
+
             return t
 
         if type(ex_type) is m_types.UserClass:
@@ -449,8 +460,9 @@ class _Deduction(ast.NodeVisitor):
         else:
             raise NotImplemented()
 
-    def visit_GetterAssign(self, node):
-        self.working_tree_node.symbol_map["self." + node.self_id] = self.traverse(node.value)
+
+    def visit_InitAssign(self, node):
+        self.working_tree_node.symbol_map["self." + node.id] = self.traverse(node.value)
 
 
 

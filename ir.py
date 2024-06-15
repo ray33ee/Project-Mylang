@@ -42,6 +42,8 @@ class FunctionCall(Expression):
         mang = mangler.Name(self.id).mangle()
 
         for a in self.types:
+            if type(a) is None:
+                raise "Types contains a None value. Did you forget to substitute the function call for a fucntion call with types added?"
             mang = mang + a.mangle()
 
         return "F" + str(len(mang)) + mang
@@ -68,7 +70,16 @@ class List(Expression):
 
     def __init__(self, elements):
         super().__init__()
-        self.elemenets = elements
+        self.elements = elements
+
+
+class Tuple(Expression):
+
+    _fields = ["elements"]
+
+    def __init__(self, elements):
+        super().__init__()
+        self.elements = elements
 
 class Constant(Expression):
 
@@ -265,6 +276,12 @@ class MemberFunctionDef(FunctionDef):
         self.body = ir_func.body
         self.ret_type = ir_func.ret_type
 
+
+
+class InitFunctionDef(FunctionDef):
+    def __init__(self, name, args, member_list):
+        super().__init__(name, args)
+        self.member_list = member_list
 
 
 class ClassDef(ast.AST):

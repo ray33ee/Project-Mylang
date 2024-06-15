@@ -1,5 +1,7 @@
 import ast
 
+import mangler
+
 
 # A Self on its own, without accessing any attributes (for example return self, or x = self)
 class SolitarySelf(ast.AST):
@@ -96,3 +98,31 @@ class GetterAssign(ast.AST):
         super().__init__()
         self.self_id = self_id
         self.value = value
+
+
+class InitAssign(ast.AST):
+
+    _fields = ["mangled_member", "value"]
+
+    def __init__(self, id, value):
+        super().__init__()
+        self.mangled_member = mangler.MemberVariable(id).mangle()
+        self.id = id
+        self.value = value
+
+
+class InitFunctionDef(ast.FunctionDef):
+
+    _fields = ["args", "body"]
+
+    def __init__(self, args, body, decorator_list, returns, type_comment, type_params):
+        super().__init__()
+        self.name = "__init__"
+        self.args = args
+        self.body = body
+        self.member_list = None
+        self.decorator_list = decorator_list
+        self.returns = returns
+        self.type_comment = type_comment
+        self.type_params = type_params
+        self.lineno = None

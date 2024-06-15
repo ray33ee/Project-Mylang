@@ -1,11 +1,15 @@
 import ast
 import symtable
 
+import custom_nodes
 import custom_unparser
 import errors
 import members
 import utils
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 # A class representing a variable in a symbol table
 class Variable:
@@ -28,6 +32,11 @@ class Function:
 
         t = symtable.symtable(func_code, "", "exec")
 
+        if len(t.get_children()) == 0:
+            logger.critical("Could not get symbol table from function. Hint: This might be caused by a  missing entry in the custom unparser if a new node was created")
+            raise "Could not resolve symbol table for function"
+
+
         table = t.get_children()[0]
 
         for t in table.get_symbols():
@@ -48,7 +57,7 @@ class Class:
         self.member_variables = member_variables
 
         for statement in node.body:
-            if type(statement) is ast.FunctionDef:
+            if type(statement) is ast.FunctionDef or type(statement) is custom_nodes.InitFunctionDef:
                 self.functions.append(Function(statement))
             else:
                 raise "Classes can only contain function definitions"
@@ -84,8 +93,11 @@ class Table:
 
         member_variables = members.resolve_members(mod)
 
+        logger.debug("Member Map:")
+        logger.debug(member_variables)
+
         for statement in mod.body:
-            if type(statement) is ast.FunctionDef:
+            if isinstance(statement, ast.FunctionDef):
                 self.functions.append(Function(statement))
             elif type(statement) is ast.ClassDef:
                 self.classes.append(Class(statement, list(map(lambda x: Variable(x), member_variables[statement.name]))))

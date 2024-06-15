@@ -37,6 +37,7 @@ class Members(ast.NodeVisitor):
         if node.name in self.map:
             raise "Duplicate class declarations"
 
+        self.map[node.name] = OrderedDict()
 
         self.traverse(node.body)
 
@@ -47,19 +48,18 @@ class Members(ast.NodeVisitor):
         self.working_class = None
 
 
-    def visit_FunctionDef(self, node):
+    def visit_InitFunctionDef(self, node):
         # If the function is a class constructor, traverse its body. Otherwise dont bother
-        if node.name == "__init__" and self.working_class:
-            self.working_function = node
 
-            self.map[self.working_class.name] = OrderedDict()
+        self.traverse(node.body)
 
-            self.traverse(node.body)
 
-            self.working_function = None
+        # Add the list of member variables to the InitFunctionDef. This is used to Rustify ir.InitFunctionDef
+        node.member_list = list(self.map[self.working_class.name].keys())
 
-    def visit_GetterAssign(self, node):
-        if self.working_class and self.working_function.name == "__init__":
-            self.map[self.working_class.name][node.self_id] = None
+
+
+    def visit_InitAssign(self, node):
+        self.map[self.working_class.name][node.id] = None
 
 
