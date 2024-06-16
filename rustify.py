@@ -4,6 +4,7 @@ import ir
 from contextlib import contextmanager
 import logging
 import m_types
+import mangle
 import mangler
 
 logger = logging.getLogger(__name__)
@@ -187,7 +188,7 @@ class _Rustify(ast.NodeVisitor):
                         self.fill()
                         self.write(n)
                         self.write(": ")
-                        self.write(mangler.MemberVariable(n).mangle())
+                        self.write(mangle.mangle(mangler.MemberVariable(n)))
                         self.write(",")
 
 

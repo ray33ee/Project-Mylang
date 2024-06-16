@@ -1,7 +1,7 @@
 import ast
 
 import m_types
-
+import mangle
 
 
 def unparse(ast_obj):
@@ -108,8 +108,9 @@ class _Unparser(ast._Unparser):
         self.traverse(node.value)
 
     def visit_InitAssign(self, node):
+
         self.fill()
-        self.write(node.mangled_member)
+        self.write(mangle.mangle(node))
         self.write(" = ")
         self.traverse(node.value)
 

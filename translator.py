@@ -3,6 +3,8 @@ from collections import OrderedDict
 import logging
 import deduction
 import ir
+import mangle
+import mangler
 
 logger = logging.getLogger(__name__)
 
@@ -196,4 +198,4 @@ class _Translator(ast.NodeVisitor):
         return ir.GlobalFunctionCall(node.id, self.traverse(node.args), node.types)
 
     def visit_InitAssign(self, node):
-        return ir.LetAssign(ir.Identifier(node.mangled_member), self.traverse(node.value))
+        return ir.LetAssign(ir.Identifier(mangle.mangle(node)), self.traverse(node.value))

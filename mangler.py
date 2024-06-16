@@ -31,7 +31,8 @@ class Name:
 
 class Mangle:
     def __init__(self, obj):
-        self.mangled_string = "_Z" + obj.mangle()
+        import mangle
+        self.mangled_string = mangle.mangle(obj)
 
     def __hash__(self):
         return hash(self.mangled_string)
@@ -92,9 +93,6 @@ class VariableMangler:
 class MemberVariable:
     def __init__(self, id):
         self.id = id
-
-    def mangle(self):
-        return "_Z" + Name(["self", self.id]).mangle() + "V"
 
 
 def mangler_test_function(obj, verbose=False):

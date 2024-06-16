@@ -102,11 +102,10 @@ class GetterAssign(ast.AST):
 
 class InitAssign(ast.AST):
 
-    _fields = ["mangled_member", "value"]
+    _fields = ["id", "value"]
 
     def __init__(self, id, value):
         super().__init__()
-        self.mangled_member = mangler.MemberVariable(id).mangle()
         self.id = id
         self.value = value
 

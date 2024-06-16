@@ -19,7 +19,6 @@ class _Sugar(ast.NodeTransformer):
         super().__init__()
         self.working_function = None
         self.working_class = None
-        self.variable_mangler = None
 
 
     # Returns true if the function in self.working_function represents a class constructor
@@ -154,7 +153,6 @@ class _Sugar(ast.NodeTransformer):
 
     def visit_FunctionDef(self, node):
         self.working_function = node
-        self.variable_mangler = mangler.VariableMangler()
 
         if not self.function_is_class_init():
             f = ast.FunctionDef(node.name, self.traverse(node.args), self.flatten(self.traverse(node.body)), node.decorator_list, node.returns, node.type_comment, node.type_params)
@@ -163,7 +161,6 @@ class _Sugar(ast.NodeTransformer):
 
         ast.fix_missing_locations(f)
 
-        self.variable_mangler = None
         self.working_function = None
         return f
 
@@ -279,8 +276,9 @@ class _Sugar(ast.NodeTransformer):
             # 1.
             assigns = []
 
+            import mangle
             # 2.
-            mangled_name = self.variable_mangler.get_variable()
+            mangled_name = mangle.mangle(node) # self.variable_mangler.get_variable()
 
             # 3.
             tmp_assigner = custom_nodes.MonoAssign(ast.Name(mangled_name, ast.Store()), self.traverse(node.value))

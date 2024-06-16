@@ -263,7 +263,7 @@ def main():
 
 """
 
-source = """
+source1 = """
 
 def f(x):
     return x
@@ -273,6 +273,14 @@ def main():
     l.append(4)
     f(l)
     
+
+"""
+
+source1 = """
+
+def main():
+    a = b = c = 1
+    l = m = 3
 
 """
 
