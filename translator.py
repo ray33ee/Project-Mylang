@@ -1,10 +1,8 @@
 import ast
-from collections import OrderedDict
 import logging
 import deduction
 import ir
 import mangle
-import mangler
 
 logger = logging.getLogger(__name__)
 

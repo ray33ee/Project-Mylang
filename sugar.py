@@ -2,8 +2,6 @@ import ast
 
 import custom_nodes
 import m_types
-import mangler
-import base64
 
 
 def sugar(node: ast.AST):
@@ -278,10 +276,16 @@ class _Sugar(ast.NodeTransformer):
 
             import mangle
             # 2.
-            mangled_name = mangle.mangle(node) # self.variable_mangler.get_variable()
+            mangled_name = mangle.mangle(node)
 
             # 3.
+
+
             tmp_assigner = custom_nodes.MonoAssign(ast.Name(mangled_name, ast.Store()), self.traverse(node.value))
+
+
+
+
 
             ast.fix_missing_locations(tmp_assigner)
 

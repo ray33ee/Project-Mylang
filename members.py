@@ -13,16 +13,12 @@ def resolve_members(node: ast.AST):
 # Visitor class used to extract the member variable names for each class in ast
 class Members(ast.NodeVisitor):
     def __init__(self):
-        self.working_function = None
         self.working_class = None
         self.map = {}
 
     # Convert the dictonary of class,ordered dict pairs into a dictionary of class,list pairs
     def get_members(self):
         return {key: list(value) for key, value in self.map.items()}
-
-
-
 
     def traverse(self, node):
         if isinstance(node, list):
@@ -41,23 +37,14 @@ class Members(ast.NodeVisitor):
 
         self.traverse(node.body)
 
-        # By this point an init function should be found. If not, we raise an error
-        if node.name not in self.map:
-            raise errors.ClassMissingInitException()
-
         self.working_class = None
 
-
     def visit_InitFunctionDef(self, node):
-        # If the function is a class constructor, traverse its body. Otherwise dont bother
 
         self.traverse(node.body)
 
-
         # Add the list of member variables to the InitFunctionDef. This is used to Rustify ir.InitFunctionDef
         node.member_list = list(self.map[self.working_class.name].keys())
-
-
 
     def visit_InitAssign(self, node):
         self.map[self.working_class.name][node.id] = None

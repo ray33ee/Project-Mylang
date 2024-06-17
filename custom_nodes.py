@@ -1,7 +1,5 @@
 import ast
 
-import mangler
-
 
 # A Self on its own, without accessing any attributes (for example return self, or x = self)
 class SolitarySelf(ast.AST):

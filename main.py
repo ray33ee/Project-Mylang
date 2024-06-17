@@ -1,15 +1,5 @@
-import symtable
-import ast
 
-import ir
-import members
-import sugar
 import utils
-import errors
-import symbol_table
-import custom_unparser
-import mangler
-import m_types
 import logging
 import sys
 
@@ -256,10 +246,15 @@ source = """
 class Test:
     def __init__(x):
         self.x = float(x)
-        
+
+def f(x):
+    return x
+
 def main():
     t = Test(88)
     l = Test(44.0)
+    
+    f(t)
 
 """
 
@@ -270,9 +265,11 @@ def f(x):
 
 def main():
     l = []
-    l.append(4)
+    l.append(3)
+    x = l[0]
     f(l)
     
+    y = float(x)
 
 """
 
@@ -280,13 +277,13 @@ source1 = """
 
 def main():
     a = b = c = 1
-    l = m = 3
+    x = y = 2
 
 """
 
 logger = logging.getLogger(__name__)
 
-logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)  #
+logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
 utils.analysis(source)
 

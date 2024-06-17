@@ -3,9 +3,9 @@ import ast
 import ir
 from contextlib import contextmanager
 import logging
+
 import m_types
 import mangle
-import mangler
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +68,9 @@ class _Rustify(ast.NodeVisitor):
 
     def write_mangled(self, item):
 
-        import mangler
+        import mangle
 
-        m = mangler.Mangle(item)
+        m = mangle.mangle(item)
 
         self.write(str(m))
 
@@ -115,8 +115,9 @@ class _Rustify(ast.NodeVisitor):
         self.comma_separated(node.tuple_types)
 
     def visit_Vector(self, node):
-        self.write("Vec")
-        logger.warning("Rustifying a m_type.Vector is not implemented yet")
+        self.write("Vec<")
+        self.traverse(node.element_type)
+        self.write(">")
 
     def visit_String(self, node):
         self.write("String")
@@ -139,7 +140,7 @@ class _Rustify(ast.NodeVisitor):
         self.comma_separated([node.ok_type, node.err_type], "<", ">")
 
     def visit_UserClass(self, node):
-        self.write("_Z"+node.mangle())
+        self.write(mangle.mangle(node))
 
     def visit_Module(self, node):
         self.traverse(node.functions)
@@ -171,12 +172,13 @@ class _Rustify(ast.NodeVisitor):
 
         self.comma_separated(node.args, prepend=prepend)
 
-        if node.ret_type.mangle() != "t0" or members:  # If the return type is not unit type, (), display it
+        if node.ret_type != m_types.Ntuple([]) or members:  # If the return type is not unit type, (), display it
             self.write(" -> ")
             if members:
                 self.write("Self")
             else:
                 self.traverse(node.ret_type)
+
         with self.block():
             self.traverse(node.body)
 
@@ -188,7 +190,7 @@ class _Rustify(ast.NodeVisitor):
                         self.fill()
                         self.write(n)
                         self.write(": ")
-                        self.write(mangle.mangle(mangler.MemberVariable(n)))
+                        self.write(mangle.mangle(mangle.MemberVariable(n)))
                         self.write(",")
 
 
@@ -279,11 +281,10 @@ class _Rustify(ast.NodeVisitor):
                 self.traverse(node.else_block)
 
     def visit_ClassConstructor(self, node):
-        from mangler import Mangle
         self.write_mangled(node.usr_class)
         self.write("::")
 
-        self.write(str(Mangle(ir.FunctionDef("__init__", node.types))))
+        self.write(str(mangle.mangle(ir.FunctionDef("__init__", node.types))))
         self.comma_separated(node.args)
 
     def visit_IRTuple(self, node):
@@ -317,6 +318,10 @@ class _Rustify(ast.NodeVisitor):
 
     def visit_Tuple(self, node):
         self.comma_separated(node.elements)
+
+    def visit_List(self, node):
+        self.write("vec!")
+        self.comma_separated(node.elements, start='[', end=']')
 
     def visit_SolitarySelf(self, node):
         self.write("self")

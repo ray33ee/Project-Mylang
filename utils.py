@@ -1,16 +1,8 @@
 import ast
-import symtable
-
-import custom_nodes
 import custom_unparser
-import errors
-import ir
 import rustify
 import sugar
 import symbol_table
-import mangler
-import m_types
-from collections import OrderedDict
 import post
 import deduction
 import translator
@@ -21,6 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 def analysis(source):
+
+    logger.debug("##################################")
+    logger.debug("Source")
+    logger.debug("##################################")
+
+    logger.debug("\n" + source)
+
     # Create a python AST from the source code
     my_ast = ast.parse(source, mode='exec')
 
@@ -51,7 +50,8 @@ def analysis(source):
     logger.debug("Mangler and Demangler tests")
     logger.debug("##################################")
 
-    #mangler.run_mangler_tests()
+    import mangle
+    mangle.run_mangler_tests()
 
     logger.debug("##################################")
     logger.debug("Deduction")
@@ -76,7 +76,7 @@ def analysis(source):
 
     p = post.post_processing(_ir)
 
-    # print(ast.dump(p, indent=4))
+    # logger.debug(ast.dump(p, indent=4))
 
     logger.debug("##################################")
     logger.debug("Final rust code")

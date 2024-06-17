@@ -1,8 +1,6 @@
 import ast
 
-import ir
 import m_types
-import mangler
 
 from collections import OrderedDict
 
@@ -38,15 +36,7 @@ class Expression(ast.AST):
 class FunctionCall(Expression):
 
 
-    def mangle(self):
-        mang = mangler.Name(self.id).mangle()
-
-        for a in self.types:
-            if type(a) is None:
-                raise "Types contains a None value. Did you forget to substitute the function call for a fucntion call with types added?"
-            mang = mang + a.mangle()
-
-        return "F" + str(len(mang)) + mang
+    pass
 
 
 class GlobalFunctionCall(FunctionCall):
@@ -248,17 +238,6 @@ class FunctionDef(ast.AST):
     def __repr__(self):
         return f"Function(name='{self.name}', args={self.args}, body={self.body})"
 
-    def mangle(self):
-        mang = mangler.Name(self.name).mangle()
-
-
-        for a in self.args:
-            if type(a) is ir.Arg:
-                mang = mang + a.annotation.mangle()
-            else:
-                mang = mang + a.mangle()
-
-        return "F" + str(len(mang)) + mang
 
 
 class MainFunctionDef(FunctionDef):
@@ -305,17 +284,6 @@ class ClassDef(ast.AST):
     def __repr__(self):
         return f"Class('{self.name}', {self.member_map}, {repr(self.functions)})"
 
-    def mangle(self):
-
-        # convert the member_map to an ordered dict
-        d = OrderedDict()
-
-        for member in self.member_map:
-            d["self." + member.id] = member.annotation
-
-
-        # Here we leverage the UserClass mangling to do our work for us
-        return m_types.UserClass(self.name, d).mangle()
 
 
 

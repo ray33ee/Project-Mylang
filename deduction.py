@@ -82,7 +82,7 @@ class _Deduction(ast.NodeVisitor):
     # Given a built-in type (expr), a function name (func) and a list of argument types (...) we can determine the
     # return type of the function expr.func(...) using the following structure
     built_in_returns = {
-        m_types.Boolean(): {
+        m_types.Boolean: {
             "__bool__": { HashableList(): m_types.Boolean() },
             "__float__": { HashableList(): m_types.Floating() },
             "__int__": { HashableList(): m_types.Integer() },
@@ -101,7 +101,7 @@ class _Deduction(ast.NodeVisitor):
             "__zero__": { HashableList(): m_types.Boolean() },
         },
 
-        m_types.Floating(): {
+        m_types.Floating: {
             "__add__": { HashableList([m_types.Floating()]): m_types.Floating(), HashableList([m_types.Integer()]): m_types.Floating()},
             "__real__": { HashableList(): m_types.Floating()  },
             "__imag__": { HashableList(): m_types.Floating()  },
@@ -112,7 +112,7 @@ class _Deduction(ast.NodeVisitor):
             "__one__": {HashableList(): m_types.Floating()},
         },
 
-        m_types.Integer(): {
+        m_types.Integer: {
             "__add__": { HashableList([m_types.Integer()]): m_types.Integer(), HashableList([m_types.Floating()]): m_types.Floating() },
             "__real__": { HashableList(): m_types.Integer()  },
             "__imag__": { HashableList(): m_types.Integer()  },
@@ -128,7 +128,7 @@ class _Deduction(ast.NodeVisitor):
         },
 
         m_types.Vector: {
-            "__getitem__": {HashableList(): "element"}
+            "__getitem__": {HashableList([m_types.Integer()]): "element_type"}
         }
     }
 
@@ -416,11 +416,27 @@ class _Deduction(ast.NodeVisitor):
             return ret_type
 
         else:
-            # Expression is a built-in type, so to get the return type we look to the built_in_returns map
-            b = self.built_in_returns[ex_type][node.id][self.HashableList(arg_types)]
 
+            if type(ex_type) is m_types.Unknown:
+                try:
+                    ex_type = ex_type.get_type()
+                except:
+                    raise "Cannot lookup unknown type"
+
+
+            # Expression is a built-in type, so to get the return type we look to the built_in_returns map
+            b = self.built_in_returns[type(ex_type)][node.id][self.HashableList(arg_types)]
+
+            # If the lookup returns a string, this represents an associated type. We access this type via getattr on the extype:
+            if type(b) is str:
+                b = getattr(ex_type, b)
+
+
+            # Replace with a node containing type info
             self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
                                                                                    arg_types)
+
+
 
             # If the lookup fails, we might be able to use the right functions instead. For example
             # if __add__ fails try __radd__ instead. If radd works, replace it with `self.working_tree_node.subs`.
