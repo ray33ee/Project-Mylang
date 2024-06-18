@@ -11,11 +11,11 @@ from collections import OrderedDict
 
 class Arg(ast.AST):
 
-    _fields = ["expr", "annotation"]
+    _fields = ["id", "annotation"]
 
-    def __init__(self, expr, annotation):
+    def __init__(self, id, annotation):
         super().__init__()
-        self.expr = expr
+        self.id = id
         self.annotation = annotation
 
 
@@ -41,7 +41,7 @@ class FunctionCall(Expression):
 
 class GlobalFunctionCall(FunctionCall):
 
-    _fields = ["id", "args"]
+    _fields = ["id", "args", "types"]
 
     def __init__(self, _id, args, types):
         super().__init__()
@@ -82,7 +82,7 @@ class Constant(Expression):
 
 class MemberFunction(FunctionCall):
 
-    _fields = ["expr", "id", "args"]
+    _fields = ["expr", "id", "args", "types"]
 
     def __init__(self, expr: Expression, _id: str, args: list[Expression], types):
         super().__init__()

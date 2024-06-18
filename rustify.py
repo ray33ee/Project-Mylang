@@ -26,7 +26,10 @@ class _Rustify(ast.NodeVisitor):
         self.in_class = False
 
     def write(self, text):
-        self.code.append(text)
+        if type(text) is str:
+            self.code.append(text)
+        else:
+            raise "Write can only write strings"
 
     def fill(self, text=""):
         self.write("\n")
@@ -86,8 +89,14 @@ class _Rustify(ast.NodeVisitor):
                 self.traverse(n)
 
 
+    def visit_Unknown(self, node):
+        if node.has_inner():
+            self.visit(node.inner())
+        else:
+            raise "Cannot rustify empty unknown"
+
     def visit_Arg(self, node):
-        self.traverse(node.expr)
+        self.write(node.id)
         self.write(": ")
         self.traverse(node.annotation)
 

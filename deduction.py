@@ -4,7 +4,6 @@ import custom_nodes
 import errors
 import m_types
 import symbol_table
-from collections import OrderedDict
 import ir
 import logging
 
@@ -26,19 +25,28 @@ class TypeTree(ast.AST):
         # Todo: We don't need to pass 'name' as we can deduce this from ast_node.name
         self.function_name = name
         self.arg_types = arg_types
-        self.arg_map = OrderedDict()
+        self.arg_map = []
 
-        for key, value in zip(ast_node.args.args, arg_types):
-            self.arg_map[key.arg] = value
+
 
         if parent_class_type and name != "__init__":
             member_types = parent_class_type.member_types
         else:
-            member_types = OrderedDict()
+            member_types = []
+
+        # Combine the argument map and the class member variable map into one
+        self.symbol_map = {}
+
+        for key, value in zip(ast_node.args.args, arg_types):
+            self.arg_map.append(ir.Arg(key.arg, value))
+            self.symbol_map[key.arg] = value
+
+        for member in member_types:
+            self.symbol_map[member.id] = member.annotation
+
         self.ast_node = ast_node
         self.parent = parent
-        # Combine the argument map and the class member variable map into one
-        self.symbol_map = {**self.arg_map, **dict(member_types)}
+
         self.child_trees = []
         self.ret_type = m_types.Ntuple([])
         self.parent_class_type = parent_class_type # None if the function is a global function, UserClass node if the function is a member function
@@ -120,6 +128,7 @@ class _Deduction(ast.NodeVisitor):
             "__eq__": { HashableList([m_types.Integer()]): m_types.Boolean()},
 
             "__float__": {HashableList(): m_types.Floating()},
+            "__int__": {HashableList(): m_types.Integer()},
 
             "__next__": {HashableList(): m_types.Option(m_types.Integer())},
 
@@ -128,12 +137,16 @@ class _Deduction(ast.NodeVisitor):
         },
 
         m_types.Vector: {
-            "__getitem__": {HashableList([m_types.Integer()]): "element_type"}
+            "__getitem__": {HashableList([m_types.Integer()]): "element_type"},
+
+            #"append": {HashableList([]): m_types.Ntuple([])},
         }
     }
 
     def __init__(self, table: symbol_table.Table):
         self.whole_table = table
+
+        self.biumap = {}
 
         self.working_tree_node = TypeTree("main", [], table.get_main().ast_node, None, None, None)
 
@@ -258,7 +271,7 @@ class _Deduction(ast.NodeVisitor):
 
     def visit_List(self, node):
         if len(node.elts) == 0:
-            return m_types.Vector(m_types.Unknown())
+            return m_types.Vector(m_types.Unknown(self))
         elif len(node.elts) == 1:
             return m_types.Vector(self.traverse(node.elts[0]))
         else:
@@ -326,10 +339,10 @@ class _Deduction(ast.NodeVisitor):
 
                 m = self.working_tree_node.symbol_map
 
-                member_var_types = OrderedDict()
+                member_var_types = []
 
                 for mem in self.whole_table[node.id].member_variables:
-                    member_var_types["self." + mem.name] = m["self." + mem.name]
+                    member_var_types.append(ir.Member("self." + mem.name, m["self." + mem.name]))
 
                 usr_class = m_types.UserClass(node.id, member_var_types)
 
@@ -379,18 +392,56 @@ class _Deduction(ast.NodeVisitor):
         return ret_type
 
 
+    def handle_builtin(self, node, ex_type, arg_types):
+        if type(ex_type) is m_types.Vector and node.id == "append":
+            t = arg_types[0]
+            ex_type.element_type.fill(t)
+            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
+                                                                            arg_types)
+            return m_types.Ntuple([])
+
+        elif type(ex_type) is m_types.Unknown:
+            if ex_type.has_inner():
+                ex_type = ex_type.get_type()
+            else:
+                # Replace with a node containing type info
+                self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
+                                                                                arg_types)
+                # Create a new unknown for the return type of the built in call and tie this unknown to ex_type.
+                # This means that when ex_type's unknown is resolved, this new unknown will be resolved too
+                u = m_types.Unknown(self)
+                ex_type.add_dependent(u, node, arg_types)
+                return u
+
+
+        # Expression is a built-in type, so to get the return type we look to the built_in_returns map
+        b = self.built_in_returns[type(ex_type)][node.id][self.HashableList(arg_types)]
+
+        # If the lookup returns a string, this represents an associated type. We access this type via getattr on the extype:
+        if type(b) is str:
+            b = getattr(ex_type, b)
+
+        self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
+                                                                        arg_types)
+
+        # If the lookup fails, we might be able to use the right functions instead. For example
+        # if __add__ fails try __radd__ instead. If radd works, replace it with `self.working_tree_node.subs`.
+
+        # Lets use an example, say we have a function call
+        # a.__add__(b)
+        # which is not implemented for 'a'. We then try
+        # b.__radd__(a)
+        # if this is implemented, we swap it out via the substitution map. if it is not, this is a compiler error
+
+        # Note: We must perform this test on user defined types, as well as built-ins
+
+        return b
+
+
     def visit_MemberFunction(self, node):
         ex_type = self.traverse(node.exp)
         # Get an ordered list of the argument types for the function call
         arg_types = self.traverse(node.args)
-
-        if type(ex_type) is m_types.Vector and node.id == "append":
-            t = arg_types[0]
-            ex_type.element_type.inner = t
-            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
-                                                                                   arg_types)
-
-            return t
 
         if type(ex_type) is m_types.UserClass:
 
@@ -417,39 +468,8 @@ class _Deduction(ast.NodeVisitor):
 
         else:
 
-            if type(ex_type) is m_types.Unknown:
-                try:
-                    ex_type = ex_type.get_type()
-                except:
-                    raise "Cannot lookup unknown type"
+            return self.handle_builtin(node, ex_type, arg_types)
 
-
-            # Expression is a built-in type, so to get the return type we look to the built_in_returns map
-            b = self.built_in_returns[type(ex_type)][node.id][self.HashableList(arg_types)]
-
-            # If the lookup returns a string, this represents an associated type. We access this type via getattr on the extype:
-            if type(b) is str:
-                b = getattr(ex_type, b)
-
-
-            # Replace with a node containing type info
-            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
-                                                                                   arg_types)
-
-
-
-            # If the lookup fails, we might be able to use the right functions instead. For example
-            # if __add__ fails try __radd__ instead. If radd works, replace it with `self.working_tree_node.subs`.
-
-            # Lets use an example, say we have a function call
-            # a.__add__(b)
-            # which is not implemented for 'a'. We then try
-            # b.__radd__(a)
-            # if this is implemented, we swap it out via the substitution map. if it is not, this is a compiler error
-
-            # Note: We must perform this test on user defined types, as well as built-ins
-
-            return b
 
 
     def visit_SolitarySelf(self, node):

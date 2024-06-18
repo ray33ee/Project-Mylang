@@ -233,15 +233,9 @@ class _Sugar(ast.NodeTransformer):
         # ...
         # b_m.__setitem__(..., v)
 
-        if len(node.targets) == 1:
-
-            # If we have a single, non-chained assignment we can easily convert this into a MonoAssign
-
-            target = node.targets[0]
-
+        def handle_target(target, rhs):
             if type(target) is ast.Subscript:
-                n = ast.Expr(custom_nodes.MemberFunction(self.traverse(target.value), "__setitem__",
-                                                [self.traverse(target.slice), self.traverse(node.value)]))
+                n = ast.Expr(custom_nodes.MemberFunction(self.traverse(target.value), "__setitem__", [self.traverse(target.slice), rhs]))
                 ast.fix_missing_locations(n)
                 return n
             elif type(target) is ast.Attribute:
@@ -249,15 +243,25 @@ class _Sugar(ast.NodeTransformer):
                 if type(target.value) is ast.Name:
                     if target.value.id == "self":
                         if self.function_is_getter_or_setter(target.attr):
-                            return custom_nodes.GetterAssign(target.attr, self.traverse(node.value))
+                            return custom_nodes.GetterAssign(target.attr, rhs)
                         elif self.function_is_class_init():
-                            return custom_nodes.InitAssign(target.attr, self.traverse(node.value))
+                            return custom_nodes.InitAssign(target.attr, rhs)
 
-                return ast.Expr(self.member_function(target.value, f"__set_{target.attr}__", [self.traverse(node.value)]))
+                return ast.Expr(
+                    self.member_function(target.value, f"__set_{target.attr}__", [rhs]))
             else:
-                n = custom_nodes.MonoAssign(self.traverse(target), self.traverse(node.value))
+                n = custom_nodes.MonoAssign(self.traverse(target), rhs)
                 ast.fix_missing_locations(n)
                 return n
+
+
+        if len(node.targets) == 1:
+
+            # If we have a single, non-chained assignment we can easily convert this into a MonoAssign
+
+            target = node.targets[0]
+
+            return handle_target(target, self.traverse(node.value))
 
         else:
 
@@ -279,13 +283,7 @@ class _Sugar(ast.NodeTransformer):
             mangled_name = mangle.mangle(node)
 
             # 3.
-
-
             tmp_assigner = custom_nodes.MonoAssign(ast.Name(mangled_name, ast.Store()), self.traverse(node.value))
-
-
-
-
 
             ast.fix_missing_locations(tmp_assigner)
 
@@ -294,30 +292,7 @@ class _Sugar(ast.NodeTransformer):
             # 4.
 
             for target in node.targets:
-                if type(target) is ast.Subscript:
-                    n = ast.Expr(custom_nodes.MemberFunction(self.traverse(target.value), "__setitem__", [self.traverse(target.slice), ast.Name(mangled_name, ast.Store())]))
-                    ast.fix_missing_locations(n)
-                    assigns.append(n)
-                elif type(target) is ast.Attribute:
-                    self.member_function(target.value, f"__set_{target.attr}__", [ast.Name(mangled_name, ast.Store())])
-
-                    if type(target.value) is ast.Name:
-                        if target.value.id == "self":
-                            if self.function_is_getter_or_setter(target.attr):
-                                assigns.append(custom_nodes.GetterAssign(target.attr,
-                                                                         ast.Name(mangled_name, ast.Store())))
-                                continue
-                            elif self.function_is_class_init():
-                                assigns.append(custom_nodes.InitAssign(target.attr, ast.Name(mangled_name, ast.Store())))
-                                continue
-
-                    assigns.append( ast.Expr(
-                        self.member_function(target.value, f"__set_{target.attr}__", [ast.Name(mangled_name, ast.Store())])))
-                else:
-                    n = custom_nodes.MonoAssign(self.traverse(target), ast.Name(mangled_name, ast.Store()))
-                    ast.fix_missing_locations(n)
-                    assigns.append(n)
-
+                assigns.append(handle_target(target, ast.Name(mangled_name, ast.Store())))
 
             # 5.
 

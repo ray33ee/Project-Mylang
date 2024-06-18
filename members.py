@@ -1,8 +1,4 @@
 import ast
-from collections import OrderedDict
-
-import custom_nodes
-import errors
 
 
 def resolve_members(node: ast.AST):
@@ -33,7 +29,7 @@ class Members(ast.NodeVisitor):
         if node.name in self.map:
             raise "Duplicate class declarations"
 
-        self.map[node.name] = OrderedDict()
+        self.map[node.name] = []
 
         self.traverse(node.body)
 
@@ -44,9 +40,9 @@ class Members(ast.NodeVisitor):
         self.traverse(node.body)
 
         # Add the list of member variables to the InitFunctionDef. This is used to Rustify ir.InitFunctionDef
-        node.member_list = list(self.map[self.working_class.name].keys())
+        node.member_list = self.map[self.working_class.name]
 
     def visit_InitAssign(self, node):
-        self.map[self.working_class.name][node.id] = None
+        self.map[self.working_class.name].append(node.id)
 
 

@@ -20,24 +20,58 @@ class MType(ast.AST):
 # Convenience function. Used when the type is not immediately know, for example when declaring an empty array the
 # type would be Vector(Unknown)
 class Unknown:
-    def __init__(self, inner=None):
-        self.inner = inner
+
+    class Dependant:
+        def __init__(self, unknown, node, arg_types):
+            self.unknown = unknown
+            self.node = node
+            self.arg_types = arg_types
+
+    def __init__(self, deductor, inner=None):
+        self._inner = inner
+        self.deductor = deductor
+        self._depends = []
 
     def fill(self, inner):
-        self.inner = inner
+        import deduction
+
+        # Resolve this unknown
+        self._inner = inner
+
+        # Resolve any unknowns linked to self
+        for dependant in self._depends:
+            t = self.deductor.handle_builtin(dependant.node, inner, dependant.arg_types)
+            dependant.unknown.fill(t)
+
+    def add_dependent(self, unknown, node, arg_types):
+        self._depends.append(self.Dependant(unknown, node, arg_types))
 
     def __eq__(self, other):
-        assert self.inner and other.inner
-        return self.inner == other.inner
+        assert self._inner and other._inner
+        return self._inner == other._inner
 
     def __hash__(self):
         return hash(id(self))
 
+    def has_inner(self):
+        return self._inner is not None
+
+    def inner(self):
+        return self._inner
+
+    def __repr__(self):
+        if self._inner:
+            return f"Unknown({ast.dump(self._inner)})"
+        else:
+            return "Unknown()"
+
     def get_type(self):
-        if self.inner:
-            return self.inner
+        if self._inner:
+            return self._inner
         else:
             raise "Cannot unwrap Unknown with uninitialised type"
+
+
 
 
 class Boolean(MType):

@@ -12,7 +12,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def analysis(source):
+def analysis(source, verbose=False):
+
+    # If verbosity is off, set the debugging level of the root logger to INFO level
+    if not verbose:
+        prior_level = logging.root.level
+        logging.root.setLevel(logging.INFO)
 
     logger.debug("##################################")
     logger.debug("Source")
@@ -59,6 +64,7 @@ def analysis(source):
 
     tree = deduction.deduce(t)
 
+    logger.debug("POpoksdpf[d")
     logger.debug(tree)
     logger.debug(tree.symbol_map)
 
@@ -85,6 +91,9 @@ def analysis(source):
     s = rustify.rustify(p)
 
     logger.debug(s)
+
+    if not verbose:
+        logging.root.setLevel(prior_level)
 
 
 

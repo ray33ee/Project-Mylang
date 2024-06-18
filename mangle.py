@@ -57,7 +57,7 @@ class _Mangle:
             for t in text:
                 self.write(t)
         else:
-            raise "Cannot write"
+            raise "Write function only works on strings or list of strings"
 
     # Prepends a string s with its length
     def length(self, s):
@@ -110,8 +110,8 @@ class _Mangle:
         self.visit(node.annotation)
 
     def visit_Unknown(self, node):
-        if node.inner:
-            self.visit(node.inner)
+        if node.has_inner():
+            self.visit(node.inner())
         else:
             raise "Cannot call visit on unresolved unknown"
 
@@ -167,7 +167,7 @@ class _Mangle:
         self.visit(node.err_type)
 
     def visit_UserClass(self, node):
-        self.generic_class(node.identifier, node.member_types.values())
+        self.generic_class(node.identifier, node.member_types)
 
     def visit_FunctionCall(self, node):
         self.generic_function(node.id, node.types)

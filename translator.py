@@ -90,7 +90,7 @@ class _Translator(ast.NodeVisitor):
 
 
         # Create a new IR entry
-        ir_function = ir.FunctionDef(self.working_tree.function_name, [ir.Arg(ir.Identifier(id), ann.get_type()) for id, ann in self.working_tree.arg_map.items()])
+        ir_function = ir.FunctionDef(self.working_tree.function_name, self.working_tree.arg_map)
         ir_function.set_return_type(self.working_tree.ret_type.get_type())
 
         # Traverse the function body
@@ -112,7 +112,7 @@ class _Translator(ast.NodeVisitor):
 
 
         # Create a new IR entry
-        ir_function = ir.InitFunctionDef(self.working_tree.function_name, [ir.Arg(ir.Identifier(id), ann.get_type()) for id, ann in self.working_tree.arg_map.items()], node.member_list)
+        ir_function = ir.InitFunctionDef(self.working_tree.function_name, self.working_tree.arg_map, node.member_list)
         ir_function.set_return_type(self.working_tree.ret_type.get_type())
 
         # Traverse the function body
@@ -124,7 +124,7 @@ class _Translator(ast.NodeVisitor):
 
 
 
-        l = [ir.Member(field[5:], ann.get_type()) for field, ann in usr.member_types.items()]
+        l = [ir.Member(member.id[5:], member.annotation.get_type()) for member in usr.member_types]
 
 
         if usr not in self.class_map:
@@ -197,3 +197,4 @@ class _Translator(ast.NodeVisitor):
 
     def visit_InitAssign(self, node):
         return ir.LetAssign(ir.Identifier(mangle.mangle(node)), self.traverse(node.value))
+
