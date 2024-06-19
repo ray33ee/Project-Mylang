@@ -2,6 +2,7 @@ import ast
 import logging
 import deduction
 import ir
+import m_types
 import mangle
 
 logger = logging.getLogger(__name__)
@@ -187,7 +188,11 @@ class _Translator(ast.NodeVisitor):
         return ir.SelfFunction(node.id, self.traverse(node.args), node.types)
 
     def visit_MemberFunction(self, node):
-        return ir.MemberFunction(self.traverse(node.exp), node.id, self.traverse(node.args), node.types)
+
+        if type(node.exp_type) is m_types.UserClass:
+            return ir.UserClassMemberFunction(self.traverse(node.exp), node.id, self.traverse(node.args), node.types)
+        else:
+            return ir.BuiltInMemberFunction(self.traverse(node.exp), node.id, self.traverse(node.args), node.types)
 
     def visit_ConstructorCall(self, node):
         return ir.ClassConstructor(node.class_id, self.traverse(node.args), node.types)

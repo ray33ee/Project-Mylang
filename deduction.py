@@ -272,7 +272,7 @@ class _Deduction(ast.NodeVisitor):
     def visit_List(self, node):
         if len(node.elts) == 0:
             return m_types.Vector(m_types.Unknown(self))
-        elif len(node.elts) == 1:
+        elif len(node.elts) > 0:
             return m_types.Vector(self.traverse(node.elts[0]))
         else:
             raise NotImplemented()
@@ -290,7 +290,7 @@ class _Deduction(ast.NodeVisitor):
         # first we check for any local variables with the name
         if node.id in self.working_tree_node.symbol_map:
             # Add an entry to the substitution map
-            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(ast.Name(node.id), "__call__", node.args, self.traverse(node.args))
+            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(ast.Name(node.id), "__call__", node.args, self.traverse(node.args), self.working_tree_node.symbol_map[node.id])
             # Treat the mycall 'identifier(...)' as a 'identifier.__call__(...)'
             return self.visit_MemberFunction(custom_nodes.MemberFunction(ast.Name(node.id), "__call__", node.args))
 
@@ -358,10 +358,19 @@ class _Deduction(ast.NodeVisitor):
 
                 return usr_class
 
+        else:
+
+            # For any call not in the symbol table, we assume is a global function call to an external functions (print, panic, etc.)
+
+            # Get an ordered list of the argument types for the function call
+            arg_types = self.traverse(node.args)
+
+            self.working_tree_node.subs[node] = custom_nodes.MyCall(node.id, node.args, arg_types)
+
 
     def visit_FormattedValue(self, node):
-        raise NotImplemented()
-        return m_types.String()
+            raise NotImplemented()
+            return m_types.String()
 
     def visit_SelfMemberVariable(self, node):
         return self.working_tree_node.symbol_map["self." + node.id]
@@ -393,11 +402,25 @@ class _Deduction(ast.NodeVisitor):
 
 
     def handle_builtin(self, node, ex_type, arg_types):
+
+        # If any arg_types are unknowns, we need to add these ass dependents to ex_type
+        found_unknown = False
+        u = m_types.Unknown(self)
+
+        for t in arg_types:
+            if type(t) is m_types.Unknown:
+                if not t.has_inner():
+                    found_unknown = True
+                    t.add_dependent(u, node, arg_types)
+
+        if found_unknown:
+            return u
+
         if type(ex_type) is m_types.Vector and node.id == "append":
             t = arg_types[0]
             ex_type.element_type.fill(t)
             self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
-                                                                            arg_types)
+                                                                            arg_types, ex_type)
             return m_types.Ntuple([])
 
         elif type(ex_type) is m_types.Unknown:
@@ -405,8 +428,9 @@ class _Deduction(ast.NodeVisitor):
                 ex_type = ex_type.get_type()
             else:
                 # Replace with a node containing type info
+
                 self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
-                                                                                arg_types)
+                                                                                arg_types, ex_type)
                 # Create a new unknown for the return type of the built in call and tie this unknown to ex_type.
                 # This means that when ex_type's unknown is resolved, this new unknown will be resolved too
                 u = m_types.Unknown(self)
@@ -415,14 +439,14 @@ class _Deduction(ast.NodeVisitor):
 
 
         # Expression is a built-in type, so to get the return type we look to the built_in_returns map
-        b = self.built_in_returns[type(ex_type)][node.id][self.HashableList(arg_types)]
+        b = self.built_in_returns[type(ex_type)][node.id][self.HashableList([x.get_type() for x in arg_types])]
 
         # If the lookup returns a string, this represents an associated type. We access this type via getattr on the extype:
         if type(b) is str:
             b = getattr(ex_type, b)
 
         self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
-                                                                        arg_types)
+                                                                        arg_types, ex_type)
 
         # If the lookup fails, we might be able to use the right functions instead. For example
         # if __add__ fails try __radd__ instead. If radd works, replace it with `self.working_tree_node.subs`.
@@ -458,7 +482,7 @@ class _Deduction(ast.NodeVisitor):
 
             ret_type = self.working_tree_node.ret_type
 
-            self.working_tree_node.parent.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args, arg_types)
+            self.working_tree_node.parent.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args, arg_types, ex_type)
 
 
             parent = self.working_tree_node.parent
@@ -521,6 +545,8 @@ class _Deduction(ast.NodeVisitor):
     def visit_For(self, node):
 
         if type(node.target) is ast.Name:
+            ex_type = self.traverse(node.iter)
+            logger.warning("Must add expr_type to MemberFunction")
             self.working_tree_node.symbol_map[node.target.id] = self.traverse(custom_nodes.MemberFunction(node.iter, "__next__", []))
         else:
             raise "For target must be a name"

@@ -88,6 +88,25 @@ class _Rustify(ast.NodeVisitor):
                     comma = True
                 self.traverse(n)
 
+    def heap_wrapper(self, identifier):
+        self.write("heap::CellGc<")
+        self.write(identifier)
+        self.write(">")
+
+
+    @contextmanager
+    def new_heap(self):
+
+        self.write("heap::new_gc(")
+        yield
+        self.write(")")
+
+    @contextmanager
+    def access_heap(self):
+        self.write("heap::mut_ref_gc(&")
+        yield
+        self.write(")")
+
 
     def visit_Unknown(self, node):
         if node.has_inner():
@@ -96,6 +115,7 @@ class _Rustify(ast.NodeVisitor):
             raise "Cannot rustify empty unknown"
 
     def visit_Arg(self, node):
+        self.write("mut ")
         self.write(node.id)
         self.write(": ")
         self.traverse(node.annotation)
@@ -109,10 +129,10 @@ class _Rustify(ast.NodeVisitor):
         self.write("bool")
 
     def visit_Integer(self, node):
-        self.write("i64")
+        self.write("built_ins::integer::Integer")
 
     def visit_Floating(self, node):
-        return self.write("f64")
+        return self.write("built_ins::float::Float")
 
     def visit_Char(self, node):
         raise NotImplemented()
@@ -149,13 +169,16 @@ class _Rustify(ast.NodeVisitor):
         self.comma_separated([node.ok_type, node.err_type], "<", ">")
 
     def visit_UserClass(self, node):
-        self.write(mangle.mangle(node))
+        self.heap_wrapper(mangle.mangle(node))
+        #self.write(mangle.mangle(node))
 
     def visit_Module(self, node):
         self.traverse(node.functions)
         self.traverse(node.classes)
 
-    def visit_ClassDef(self, node):
+    def visit_CyclicClassDef(self, node):
+        self.fill()
+        self.write("#[derive(Collectable)]")
         self.fill()
         self.write("struct ")
         self.write_mangled(node)
@@ -184,7 +207,7 @@ class _Rustify(ast.NodeVisitor):
         if node.ret_type != m_types.Ntuple([]) or members:  # If the return type is not unit type, (), display it
             self.write(" -> ")
             if members:
-                self.write("Self")
+                self.heap_wrapper("Self")
             else:
                 self.traverse(node.ret_type)
 
@@ -193,14 +216,15 @@ class _Rustify(ast.NodeVisitor):
 
             if members:
                 self.fill()
-                self.write("Self ")
-                with self.block():
-                    for n in members:
-                        self.fill()
-                        self.write(n)
-                        self.write(": ")
-                        self.write(mangle.mangle(mangle.MemberVariable(n)))
-                        self.write(",")
+                with self.new_heap():
+                    self.write("Self ")
+                    with self.block():
+                        for n in members:
+                            self.fill()
+                            self.write(n)
+                            self.write(": ")
+                            self.write(mangle.mangle(mangle.MemberVariable(n)))
+                            self.write(",")
 
 
     def visit_FunctionDef(self, node):
@@ -311,7 +335,14 @@ class _Rustify(ast.NodeVisitor):
         self.write_mangled(node)
         self.comma_separated(node.args)
 
-    def visit_MemberFunction(self, node):
+    def visit_UserClassMemberFunction(self, node):
+        with self.access_heap():
+            self.traverse(node.expr)
+        self.write(".")
+        self.write_mangled(node)
+        self.comma_separated(node.args)
+
+    def visit_BuiltInMemberFunction(self, node):
         self.traverse(node.expr)
         self.write(".")
         self.write_mangled(node)
@@ -322,6 +353,14 @@ class _Rustify(ast.NodeVisitor):
             self.write(f'"{str(node.value)}"')
         elif type(node.value) is bool:
             self.write(str(node.value).lower())
+        elif type(node.value) is int:
+            self.write("built_ins::integer::Integer::new(")
+            self.write(str(node.value))
+            self.write(")")
+        elif type(node.value) is float:
+            self.write("built_ins::float::Float::new(")
+            self.write(str(node.value))
+            self.write(")")
         else:
             self.write(str(node.value))
 

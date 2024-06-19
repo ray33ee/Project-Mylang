@@ -34,14 +34,16 @@ class SelfMemberFunction(ast.AST):
 # expression.identifier(args), member function call
 class MemberFunction(ast.AST):
 
-    _fields = ["exp", "id", "args"]
+    _fields = ["exp", "id", "args", "types", "exp_type"]
 
-    def __init__(self, exp: ast.expr, id, args, types=None):
+    def __init__(self, exp: ast.expr, id, args, types=None, exp_type=None):
         super().__init__()
         self.exp = exp
         self.id = id
         self.args = args
         self.types = types
+        self.exp_type = exp_type
+
 
 
 class MyCall(ast.AST):

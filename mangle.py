@@ -175,7 +175,10 @@ class _Mangle:
     def visit_GlobalFunctionCall(self, node):
         self.generic_function(node.id, node.types)
 
-    def visit_MemberFunction(self, node):
+    def visit_BuiltInMemberFunction(self, node):
+        self.generic_function(node.id, node.types)
+
+    def visit_UserClassMemberFunction(self, node):
         self.generic_function(node.id, node.types)
 
     def visit_SelfFunction(self, node):
@@ -196,7 +199,13 @@ class _Mangle:
     def visit_InitFunctionDef(self, node):
         self.generic_functiondef(node)
 
-    def visit_ClassDef(self, node):
+    def visit_CyclicClassDef(self, node):
+        self.generic_class(node.name, node.member_map)
+
+    def visit_AcyclicClassDef(self, node):
+        self.generic_class(node.name, node.member_map)
+
+    def visit_StackClassDef(self, node):
         self.generic_class(node.name, node.member_map)
 
     def visit_Assign(self, node):
@@ -272,11 +281,11 @@ def run_mangler_tests(verbose=False):
         TestFunction("test3", [m_types.Integer(), m_types.Integer()]),
 
         # Same name, same number of fields different field types
-        ir.ClassDef("complex", [m_types.Floating(), m_types.Floating()]),
-        ir.ClassDef("complex", [m_types.Integer(), m_types.Integer()]),
+        TestFunction("complex", [m_types.Floating(), m_types.Floating()]),
+        TestFunction("complex", [m_types.Integer(), m_types.Integer()]),
 
-        ir.ClassDef("complex", [m_types.Integer()]),
-        ir.ClassDef("complex", [m_types.Bytes()]),
+        TestFunction("complex", [m_types.Integer()]),
+        TestFunction("complex", [m_types.Bytes()]),
 
         # Make sure that none of the built in types clash
         TestFunction("t", [m_types.Boolean()]),

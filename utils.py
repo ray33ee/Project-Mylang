@@ -82,7 +82,7 @@ def analysis(source, verbose=False):
 
     p = post.post_processing(_ir)
 
-    # logger.debug(ast.dump(p, indent=4))
+    logger.debug(ast.dump(p, indent=4))
 
     logger.debug("##################################")
     logger.debug("Final rust code")

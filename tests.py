@@ -322,6 +322,102 @@ def main():
     l.append([])
 
 """,
+
+"""
+
+def f(x):
+    return x
+
+def main():
+    l2 = []
+    l1 = []
+    
+    
+    a = l1[0]
+    b = l2[0]
+    
+    f(a)
+    f(b)
+    
+    c = a + b
+    
+    f(c)
+    
+    l2.append(12.0)
+    l1.append(12.0)
+    
+
+""",
+
+"""
+
+
+def main():
+    print("Hello world!")
+
+""",
+
+"""
+
+class Float:
+
+    def __init__(x):
+        self.x = float(x)
+    
+    def __get_x__():
+        return self.x
+        
+    def __float__():
+        return self.x
+        
+    def __add__(other):
+        return Float(self.x + float(other))
+        
+    def me():
+        return self
+        
+def main():
+    a = Float(100)
+    c = a + 12
+    d = a + c
+    f = d + 13.0
+
+""",
+
+"""
+
+class Test():
+    def __init__():
+        self.x = f()
+
+    def __get_x__():
+        return self.x
+
+    def __call__():
+        return True
+
+def f():
+    return g((True, 3.4))
+
+def g(i):
+    return i
+
+def main():
+    a = Test()
+    x = a.x
+    y = a()
+    a = Test()
+    a = 55
+    b = 4
+
+    b = b + 4
+
+    u = g(1)
+    v = g(2)
+    l = g(3.4)
+
+""",
+
 ]
 
 def run_tests():

@@ -80,7 +80,19 @@ class Constant(Expression):
         self.value = value
 
 
-class MemberFunction(FunctionCall):
+class BuiltInMemberFunction(FunctionCall):
+
+    _fields = ["expr", "id", "args", "types"]
+
+    def __init__(self, expr: Expression, _id: str, args: list[Expression], types):
+        super().__init__()
+        self.expr = expr
+        self.id = _id
+        self.args = args
+        self.types = types
+
+
+class UserClassMemberFunction(FunctionCall):
 
     _fields = ["expr", "id", "args", "types"]
 
@@ -265,7 +277,7 @@ class InitFunctionDef(FunctionDef):
 
 class ClassDef(ast.AST):
 
-    _fields = ["name", "member_map", "cycle", "functions"]
+    _fields = ["name", "member_map", "functions"]
 
     def __init__(self, name, member_map):
         super().__init__()
@@ -275,9 +287,6 @@ class ClassDef(ast.AST):
         self.member_map = member_map
         self.functions = []
 
-        self.cycle = None
-
-
     def add_function(self, function: FunctionDef):
         self.functions.append(function)
 
@@ -285,6 +294,28 @@ class ClassDef(ast.AST):
         return f"Class('{self.name}', {self.member_map}, {repr(self.functions)})"
 
 
+# Represents a class that exists on the heap with cyclic reference counting
+class CyclicClassDef(ClassDef):
+
+    def __init__(self, classdef):
+        super().__init__(classdef.name, classdef.member_map)
+        self.functions = classdef.functions
+
+
+# Represents a class that exists on the heap with standard reference counting
+class AcyclicClassDef(ClassDef):
+
+    def __init__(self, classdef):
+        super().__init__(classdef.name, classdef.member_map)
+        self.functions = classdef.functions
+
+
+# Represents a class that exists on the stack
+class StackClassDef(ClassDef):
+
+    def __init__(self, classdef):
+        super().__init__(classdef.name, classdef.member_map)
+        self.functions = classdef.functions
 
 
 class Module(ast.AST):
