@@ -203,3 +203,11 @@ class _Translator(ast.NodeVisitor):
     def visit_InitAssign(self, node):
         return ir.LetAssign(ir.Identifier(mangle.mangle(node)), self.traverse(node.value))
 
+    def visit_JoinedStr(self, node):
+        return ir.JoinedString(self.traverse(node.values))
+
+    def visit_FormattedValue(self, node):
+        return ir.FormattedValue(self.traverse(node.value), node.conversion)
+
+
+

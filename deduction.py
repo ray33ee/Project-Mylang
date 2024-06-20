@@ -107,6 +107,7 @@ class _Deduction(ast.NodeVisitor):
 
             "__one__": { HashableList(): m_types.Boolean() },
             "__zero__": { HashableList(): m_types.Boolean() },
+
         },
 
         m_types.Floating: {
@@ -118,6 +119,8 @@ class _Deduction(ast.NodeVisitor):
 
             "__zero__": {HashableList(): m_types.Floating()},
             "__one__": {HashableList(): m_types.Floating()},
+
+            "__str__": {HashableList(): m_types.String()},
         },
 
         m_types.Integer: {
@@ -134,6 +137,8 @@ class _Deduction(ast.NodeVisitor):
 
             "__zero__": {HashableList(): m_types.Integer()},
             "__one__": {HashableList(): m_types.Integer()},
+
+            "__str__": {HashableList(): m_types.String()},
         },
 
         m_types.Vector: {
@@ -369,8 +374,8 @@ class _Deduction(ast.NodeVisitor):
 
 
     def visit_FormattedValue(self, node):
-            raise NotImplemented()
-            return m_types.String()
+        self.traverse(node.value)
+        return m_types.String()
 
     def visit_SelfMemberVariable(self, node):
         return self.working_tree_node.symbol_map["self." + node.id]

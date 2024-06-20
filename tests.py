@@ -37,41 +37,6 @@ def main():
 
 """
 
-
-class Complex:
-	def __init__(realz, imagz):
-		self.real = realz
-		self.imag = imagz
-
-	def __get_real__():
-	    return self.real
-
-	def __get_imag__():
-	    return self.imag
-
-	def __real__():
-	    return self.real
-
-	def __imag__():
-	    return self.imag
-
-	def __add__(rhs):
-		return Complex(real(self) + real(rhs), imag(self) + imag(rhs))
-
-
-def main():
-	c1 = Complex(1, 2)
-	c2 = Complex(1.0, 2.0)
-
-	c3 = c2 + c1
-
-	c4 = c1 + 5
-
-
-""",
-
-"""
-
 class Complex:
     def __init__(r, i):
         self.real = r
@@ -417,6 +382,59 @@ def main():
     l = g(3.4)
 
 """,
+
+"""
+
+
+class Complex:
+	def __init__(realz, imagz):
+		self.real = realz
+		self.imag = imagz
+
+	def __get_real__():
+	    return self.real
+
+	def __get_imag__():
+	    return self.imag
+
+	def __real__():
+	    return self.real
+
+	def __imag__():
+	    return self.imag
+
+	def __add__(rhs):
+		return Complex(self.real + real(rhs), self.imag + imag(rhs))
+
+
+def main():
+	c1 = Complex(1, 2)
+	c2 = Complex(1.0, 2.0)
+
+	c3 = c2 + c1
+
+	c4 = c1 + 5
+	
+	a = 1
+	b = 1.0
+	
+	c = str(a)
+	d = str(b)
+	
+	print(c)
+	print(d)
+
+
+""",
+
+"""
+
+def main():
+    x = 1
+    y = True
+    a = f"hello {x+1} and {y}" 
+
+"""
 
 ]
 

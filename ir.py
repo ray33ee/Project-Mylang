@@ -80,6 +80,27 @@ class Constant(Expression):
         self.value = value
 
 
+class JoinedString(Expression):
+
+    _fields = ["values"]
+
+    def __init__(self, values):
+        super().__init__()
+        self.values = values
+
+
+class FormattedValue(Expression):
+
+    _fields = ["value", "conversion"]
+
+    def __init__(self, value, conversion):
+        super().__init__()
+        self.value = value
+        self.conversion = conversion
+
+
+
+
 class BuiltInMemberFunction(FunctionCall):
 
     _fields = ["expr", "id", "args", "types"]

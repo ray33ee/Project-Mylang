@@ -126,7 +126,7 @@ class _Rustify(ast.NodeVisitor):
         self.traverse(node.annotation)
 
     def visit_Boolean(self, node):
-        self.write("bool")
+        self.write("built_ins::Bool::bool")
 
     def visit_Integer(self, node):
         self.write("built_ins::integer::Integer")
@@ -352,7 +352,9 @@ class _Rustify(ast.NodeVisitor):
         if type(node.value) is str:
             self.write(f'"{str(node.value)}"')
         elif type(node.value) is bool:
+            self.write("built_ins::bool::Bool::new(")
             self.write(str(node.value).lower())
+            self.write(")")
         elif type(node.value) is int:
             self.write("built_ins::integer::Integer::new(")
             self.write(str(node.value))
@@ -378,6 +380,27 @@ class _Rustify(ast.NodeVisitor):
     def visit_GlobalFunctionCall(self, node):
         self.write_mangled(node)
         self.comma_separated(node.args)
+
+    def visit_JoinedString(self, node):
+        self.write("{ ")
+        self.write("let mut s = crate::built_ins::string::String::new(std::string::String::new()); ")
+        for value in node.values:
+            if type(value) is ir.Constant:
+                if type(value.value) is str:
+                    self.write("s.push_slice(")
+                    self.traverse(value)
+                    self.write("); ")
+                else:
+                    raise "joined string value is not a constant string"
+            elif type(value) is ir.FormattedValue:
+                self.write("s._ZF12N8push_strEu(")
+                self.traverse(value.value)
+                self.write("); ")
+            else:
+                raise "joined string value is not a constant or formatted value"
+        self.write("s }")
+
+
 
 
 
