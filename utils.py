@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 
 def analysis(source, verbose=False):
 
+    # prepend the source with mylang's std:
+    with open("./docs/mylang_std") as fh:
+        source = source + fh.read()
+
     # If verbosity is off, set the debugging level of the root logger to INFO level
     if not verbose:
         prior_level = logging.root.level

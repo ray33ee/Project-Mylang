@@ -41,6 +41,7 @@ class _Mangle:
     SET_TYPE = "s"
     TUPLE_TYPE = "t"
     STRING_TYPE = "u"
+    OUTPUT_STREAM = "w"
 
     def __init__(self):
         self.mangle = []

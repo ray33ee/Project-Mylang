@@ -108,6 +108,7 @@ class _Deduction(ast.NodeVisitor):
             "__one__": { HashableList(): m_types.Boolean() },
             "__zero__": { HashableList(): m_types.Boolean() },
 
+            "__push_fmt__": {HashableList([m_types.String(), m_types.Integer()]): m_types.Ntuple([])},
         },
 
         m_types.Floating: {
@@ -121,6 +122,7 @@ class _Deduction(ast.NodeVisitor):
             "__one__": {HashableList(): m_types.Floating()},
 
             "__str__": {HashableList(): m_types.String()},
+            "__push_fmt__": {HashableList([m_types.String(), m_types.Integer()]): m_types.Ntuple([])},
         },
 
         m_types.Integer: {
@@ -138,13 +140,17 @@ class _Deduction(ast.NodeVisitor):
             "__zero__": {HashableList(): m_types.Integer()},
             "__one__": {HashableList(): m_types.Integer()},
 
-            "__str__": {HashableList(): m_types.String()},
+            "__push_fmt__": {HashableList([m_types.String(), m_types.Integer()]): m_types.Ntuple([])},
         },
 
         m_types.Vector: {
             "__getitem__": {HashableList([m_types.Integer()]): "element_type"},
 
             #"append": {HashableList([]): m_types.Ntuple([])},
+        },
+
+        m_types.String: {
+            "__push_fmt__": {HashableList([m_types.String(), m_types.Integer()]): m_types.Ntuple([])},
         }
     }
 

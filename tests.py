@@ -68,71 +68,6 @@ def main():
 
 """
 
-class Range:
-    def __init__(start, finish, step):
-        self.i = start
-        self.finish = finish
-        self.step = step
-
-    def __set_i__(i):
-        self.i = i
-
-    def __get_i__():
-        return self.i
-
-    def __get_step__():
-        return self.step
-
-    def __next__():
-        r = self.i
-        self.i = self.i + self.step
-        return r
-
-def main():
-    r = Range(0, 10, 1)
-
-    n = next(r)
-    n_1 = next(r)
-
-
-""",
-
-"""
-
-class Test():
-    def __init__():
-        self.x = f()
-
-    def __get_x__():
-        return self.x
-
-    def __call__():
-        return True
-
-def f():
-    return g(("hello", 3.4))
-
-def g(i):
-    return i
-
-def main():
-    a = Test()
-    x = a.x
-    y = a()
-    a = Test()
-    a = 55
-    b = 4
-
-    b = b + 4
-
-    u = g(1)
-    v = g(2)
-    l = g(3.4)
-
-""",
-
-"""
-
 def f(x):
     return x
 
@@ -175,41 +110,6 @@ def main():
 
 """
 
-class Range:
-    def __init__(length):
-        self.index = zero(int(length))
-
-    def __get_index__():
-        return self.index
-
-    def __set_index__(value):
-        self.index = value
-
-    def __iter__():
-        return self
-
-    def __next__():
-        r = self.index
-        self.index = self.index + one(self.index)
-        return r
-
-
-def f(x):
-    return x
-
-def main(): 
-    r = Range(44)
-
-    l = iter(r)
-
-    for n in l:
-        f(n)
-
-
-""",
-
-"""
-
 class Test:
     def __init__(x):
         self.x = float(x)
@@ -222,16 +122,6 @@ def main():
     l = Test(44.0)
 
     f(t)
-
-""",
-
-"""
-
-def main():
-    a = b = c = 1
-    x = y = 2
-    f = 4.0
-    g = True
 
 """,
 
@@ -324,33 +214,6 @@ def main():
 
 """
 
-class Float:
-
-    def __init__(x):
-        self.x = float(x)
-    
-    def __get_x__():
-        return self.x
-        
-    def __float__():
-        return self.x
-        
-    def __add__(other):
-        return Float(self.x + float(other))
-        
-    def me():
-        return self
-        
-def main():
-    a = Float(100)
-    c = a + 12
-    d = a + c
-    f = d + 13.0
-
-""",
-
-"""
-
 class Test():
     def __init__():
         self.x = f()
@@ -385,56 +248,165 @@ def main():
 
 """
 
+def main():
+    x = 1.0
+    y = True
+    z = "hello world"
+    print(x)
+    print(y)
+    print(z)
 
-class Complex:
-	def __init__(realz, imagz):
-		self.real = realz
-		self.imag = imagz
+""",
 
-	def __get_real__():
-	    return self.real
+"""
 
-	def __get_imag__():
-	    return self.imag
+class Float:
 
-	def __real__():
-	    return self.real
+    def __init__(x):
+        self.x = float(x)
+     
+    def __get_x__():
+        return self.x
+        
+    def __float__():
+        return self.x
+        
+    def __add__(other):
+        return Float(self.x + float(other))
+        
+    def me():
+        return self
+        
+    def __push_fmt__(s, conversion):
+        "hello float: (".__push_fmt__(s, 0)
+        self.x.__push_fmt__(s, conversion)
+        ")".__push_fmt__(s, 0)
+        
+        
+def main():
+    a = Float(100.1)
+    c = a + 12
+    d = a + c
+    f = d + 13.0
+    print(a)
+    print(c)
+    print(d)
+    print(f)
 
-	def __imag__():
-	    return self.imag
+""",
 
-	def __add__(rhs):
-		return Complex(self.real + real(rhs), self.imag + imag(rhs))
+"""
 
+class Test():
+    def __init__():
+        self.x = f()
+
+    def __get_x__():
+        return self.x
+
+    def __call__():
+        return True
+
+def f():
+    return g(("hello", 3.4))
+
+def g(i):
+    return i
 
 def main():
-	c1 = Complex(1, 2)
-	c2 = Complex(1.0, 2.0)
+    a = Test()
+    x = a.x
+    y = a()
+    a = Test()
+    a = 55
+    b = 4
 
-	c3 = c2 + c1
+    b = b + 4
 
-	c4 = c1 + 5
-	
-	a = 1
-	b = 1.0
-	
-	c = str(a)
-	d = str(b)
-	
-	print(c)
-	print(d)
-
+    u = g(1)
+    v = g(2)
+    l = g(3.4)
 
 """,
 
 """
 
 def main():
-    x = 1
-    y = True
-    a = f"hello {x+1} and {y}" 
+    a = b = c = 1
+    x = y = 2
+    f = 4.0
+    g = True
+
+""",
 
 """
+
+class Range:
+    def __init__(length):
+        self.index = zero(int(length))
+
+    def __get_index__():
+        return self.index
+
+    def __set_index__(value):
+        self.index = value
+
+    def __iter__():
+        return self
+
+    def __next__():
+        r = self.index
+        self.index = self.index + one(self.index)
+        return r
+
+
+def f(x):
+    return x
+
+def main(): 
+    r = Range(44)
+
+    l = iter(r)
+
+    for n in l:
+        f(n)
+
+
+""",
+
+"""
+
+class Range:
+    def __init__(start, finish, step):
+        self.i = start
+        self.finish = finish
+        self.step = step
+
+    def __set_i__(i):
+        self.i = i
+
+    def __get_i__():
+        return self.i
+
+    def __get_step__():
+        return self.step
+
+    def __next__():
+        r = self.i
+        self.i = self.i + self.step
+        return r
+
+def main():
+    r = Range(0, 10, 1)
+
+    n = next(r)
+    n_1 = next(r)
+    
+    print(n)
+    print(n_1)
+
+
+""",
 
 ]
 

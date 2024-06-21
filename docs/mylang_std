@@ -1,0 +1,10 @@
+
+
+def format(x, conversion):
+    _s = ""
+    x.__push_fmt__(_s, conversion)
+    print_string(_s)
+
+def print(x):
+    format(x, 0)
+

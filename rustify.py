@@ -126,7 +126,7 @@ class _Rustify(ast.NodeVisitor):
         self.traverse(node.annotation)
 
     def visit_Boolean(self, node):
-        self.write("built_ins::Bool::bool")
+        self.write("built_ins::bool::Bool")
 
     def visit_Integer(self, node):
         self.write("built_ins::integer::Integer")
@@ -149,7 +149,7 @@ class _Rustify(ast.NodeVisitor):
         self.write(">")
 
     def visit_String(self, node):
-        self.write("String")
+        self.write("built_ins::string::String")
 
     def visit_Bytes(self, node):
         raise NotImplemented()
@@ -326,9 +326,15 @@ class _Rustify(ast.NodeVisitor):
     def visit_Identifier(self, node):
         self.write(node.id)
 
+    def visit_CloneIdentifier(self, node):
+        self.write(node.id)
+        self.write(".clone()")
+
     def visit_SelfVariable(self, node):
         self.write("self.")
         self.write(node.id)
+        if node.to_clone:
+            self.write(".clone()")
 
     def visit_SelfFunction(self, node):
         self.write("self.")
@@ -350,7 +356,7 @@ class _Rustify(ast.NodeVisitor):
 
     def visit_Constant(self, node):
         if type(node.value) is str:
-            self.write(f'"{str(node.value)}"')
+            self.write(f'crate::built_ins::string::String::new(std::string::String::from("{str(node.value)}"))')
         elif type(node.value) is bool:
             self.write("built_ins::bool::Bool::new(")
             self.write(str(node.value).lower())

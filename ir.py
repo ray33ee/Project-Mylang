@@ -139,9 +139,10 @@ class SelfVariable(Expression):
 
     _fields = ["id"]
 
-    def __init__(self, _id: str):
+    def __init__(self, _id: str, to_clone):
         super().__init__()
         self.id = _id
+        self.to_clone = to_clone
 
 
 class Identifier(Expression):
@@ -151,6 +152,15 @@ class Identifier(Expression):
     def __init__(self, _id):
         super().__init__()
         self.id = _id
+
+class CloneIdentifier(Expression):
+
+    _fields = ["id"]
+
+    def __init__(self, _id):
+        super().__init__()
+        self.id = _id
+
 
 class IRTuple(Expression):
 
@@ -282,6 +292,12 @@ class MainFunctionDef(FunctionDef):
 
 
 class MemberFunctionDef(FunctionDef):
+
+    class Mutable:
+        pass
+
+    class Immutable:
+        pass
 
     def __init__(self, ir_func: FunctionDef):
         super().__init__(ir_func.name, ir_func.args)

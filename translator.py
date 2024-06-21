@@ -1,5 +1,7 @@
 import ast
 import logging
+
+import custom_nodes
 import deduction
 import ir
 import m_types
@@ -94,6 +96,8 @@ class _Translator(ast.NodeVisitor):
         ir_function = ir.FunctionDef(self.working_tree.function_name, self.working_tree.arg_map)
         ir_function.set_return_type(self.working_tree.ret_type.get_type())
 
+
+
         # Traverse the function body
         ir_function.body = self.traverse(node.body)
 
@@ -137,10 +141,16 @@ class _Translator(ast.NodeVisitor):
         ir_class.add_function(ir_function)
 
     def visit_MonoAssign(self, node):
-        return ir.LetAssign(self.traverse(node.target), self.traverse(node.value))
+
+        if type(node.target) is ast.Name:
+            target = ir.Identifier(node.target.id)
+        else:
+            target = self.traverse(node.target)
+
+        return ir.LetAssign(target, self.traverse(node.value))
 
     def visit_GetterAssign(self, node):
-        return ir.Reassign(ir.SelfVariable(node.self_id), self.traverse(node.value))
+        return ir.Reassign(ir.SelfVariable(node.self_id, False), self.traverse(node.value))
 
     def visit_Return(self, node):
         return ir.Return(self.traverse(node.value))
@@ -155,7 +165,13 @@ class _Translator(ast.NodeVisitor):
         return ir.While(self.traverse(node.test), self.traverse(node.body))
 
     def visit_For(self, node):
-        return ir.For(self.traverse(node.target), self.traverse(node.iter), self.traverse(node.body))
+
+        if type(node.target) is ast.Name:
+            target = ir.Identifier(node.target.id)
+        else:
+            target = self.traverse(node.target)
+
+        return ir.For(target, self.traverse(node.iter), self.traverse(node.body))
 
     def visit_Break(self, node):
         return ir.Break()
@@ -167,7 +183,7 @@ class _Translator(ast.NodeVisitor):
         return None
 
     def visit_Name(self, node):
-        return ir.Identifier(node.id)
+        return ir.CloneIdentifier(node.id)
 
     def visit_Constant(self, node):
         return ir.Constant(node.value)
@@ -182,17 +198,22 @@ class _Translator(ast.NodeVisitor):
         return ir.SolitarySelf()
 
     def visit_SelfMemberVariable(self, node):
-        return ir.SelfVariable(node.id)
+        return ir.SelfVariable(node.id, True)
 
     def visit_SelfMemberFunction(self, node):
         return ir.SelfFunction(node.id, self.traverse(node.args), node.types)
 
     def visit_MemberFunction(self, node):
 
-        if type(node.exp_type) is m_types.UserClass:
-            return ir.UserClassMemberFunction(self.traverse(node.exp), node.id, self.traverse(node.args), node.types)
+        if type(node.exp) is ast.Name:
+            exp = ir.Identifier(node.exp.id)
         else:
-            return ir.BuiltInMemberFunction(self.traverse(node.exp), node.id, self.traverse(node.args), node.types)
+            exp = self.traverse(node.exp)
+
+        if type(node.exp_type) is m_types.UserClass:
+            return ir.UserClassMemberFunction(exp, node.id, self.traverse(node.args), node.types)
+        else:
+            return ir.BuiltInMemberFunction(exp, node.id, self.traverse(node.args), node.types)
 
     def visit_ConstructorCall(self, node):
         return ir.ClassConstructor(node.class_id, self.traverse(node.args), node.types)
