@@ -144,7 +144,7 @@ class _Rustify(ast.NodeVisitor):
         self.comma_separated(node.tuple_types)
 
     def visit_Vector(self, node):
-        self.write("Vec<")
+        self.write("built_ins::list::List<")
         self.traverse(node.element_type)
         self.write(">")
 
@@ -376,8 +376,9 @@ class _Rustify(ast.NodeVisitor):
         self.comma_separated(node.elements)
 
     def visit_List(self, node):
-        self.write("vec!")
+        self.write("built_ins::list::List::new(vec!")
         self.comma_separated(node.elements, start='[', end=']')
+        self.write(")")
 
     def visit_SolitarySelf(self, node):
         self.write("self")

@@ -6,6 +6,10 @@ import symbol_table
 import post
 import deduction
 import translator
+import tempfile
+import shutil
+import os
+import subprocess
 
 import logging
 
@@ -95,6 +99,33 @@ def analysis(source, verbose=False):
     s = rustify.rustify(p)
 
     logger.debug(s)
+
+    template_path = "E:\\Software Projects\\IntelliJ\\mylang_template"
+
+    with tempfile.TemporaryDirectory() as td:
+        root = td + "\\template"
+        main_rs = root + "\\src\\main.rs"
+
+        logger.info("Copying template to temporary location...")
+        # Copy the Rust template to the temporary directory
+        shutil.copytree("E:\\Software Projects\\IntelliJ\\mylang_template", root)
+
+        logger.info("Writing Rust source...")
+        # Open main.rs with append and write then write the source to the end
+        with open(main_rs, "a") as fh:
+            fh.write(s)
+
+        # Change the working directory to root
+        os.chdir(root)
+
+        logger.info("Executing cargo run...")
+        r = subprocess.run(["cargo", "run"], capture_output=True)
+
+        logger.info("stdout:")
+        logger.info(r.stdout)
+
+
+
 
     if not verbose:
         logging.root.setLevel(prior_level)

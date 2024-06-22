@@ -80,36 +80,6 @@ def main():
 
 """
 
-
-class Wrapper:
-    def __init__():
-        self.l = []
-
-    def __get_l__():
-        return self.l
-
-    def app(x):
-        self.l.append(x)
-
-def f(x):
-    return x
-
-def main():
-
-    a = Wrapper()
-
-    b = a.l
-
-    f(b)
-
-    a.app(4)
-
-
-
-""",
-
-"""
-
 class Test:
     def __init__(x):
         self.x = float(x)
@@ -175,32 +145,6 @@ def main():
 
 
     l.append([])
-
-""",
-
-"""
-
-def f(x):
-    return x
-
-def main():
-    l2 = []
-    l1 = []
-    
-    
-    a = l1[0]
-    b = l2[0]
-    
-    f(a)
-    f(b)
-    
-    c = a + b
-    
-    f(c)
-    
-    l2.append(12.0)
-    l1.append(12.0)
-    
 
 """,
 
@@ -407,6 +351,71 @@ def main():
 
 
 """,
+
+"""
+
+def f(x):
+    return x
+
+def main():
+    l2 = []
+    l1 = []
+    
+    
+    a = l1[0]
+    b = l2[0]
+    
+    f(a)
+    f(b)
+    
+    c = a + b
+    
+    f(c)
+    
+    l2.append(12.0)
+    l1.append(34.0)
+    
+    print(a)
+    print(b)
+
+""",
+
+"""
+
+
+class Wrapper:
+    def __init__():
+        self.l = []
+
+    def __get_l__():
+        return self.l
+
+    def app(x):
+        self.l.append(x)
+
+def f(x):
+    return x
+
+def main():
+
+    a = Wrapper()
+
+    b = a.l
+
+    f(b)
+
+    a.app(4)
+
+    print(b[0])
+
+""",
+
+"""
+
+def main():
+    print("Hello world!")
+
+"""
 
 ]
 
