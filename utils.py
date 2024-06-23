@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def analysis(source, verbose=False):
+def analysis(source, verbose=False, output=None):
 
     # prepend the source with mylang's std:
     with open("./docs/mylang_std") as fh:
@@ -102,28 +102,43 @@ def analysis(source, verbose=False):
 
     template_path = "E:\\Software Projects\\IntelliJ\\mylang_template"
 
+    cwd = os.getcwd()
+
     with tempfile.TemporaryDirectory() as td:
-        root = td + "\\template"
-        main_rs = root + "\\src\\main.rs"
 
-        logger.info("Copying template to temporary location...")
-        # Copy the Rust template to the temporary directory
-        shutil.copytree("E:\\Software Projects\\IntelliJ\\mylang_template", root)
+        try:
+            root = td + "\\template"
+            main_rs = root + "\\src\\main.rs"
+            executable = root + "\\target\\debug\\mylang_template.exe"
 
-        logger.info("Writing Rust source...")
-        # Open main.rs with append and write then write the source to the end
-        with open(main_rs, "a") as fh:
-            fh.write(s)
+            logger.info("Copying template to temporary location...")
+            # Copy the Rust template to the temporary directory
+            shutil.copytree(template_path, root)
 
-        # Change the working directory to root
-        os.chdir(root)
+            logger.info("Writing Rust source...")
+            # Open main.rs with append and write then write the source to the end
+            with open(main_rs, "a") as fh:
+                fh.write(s)
 
-        logger.info("Executing cargo run...")
-        r = subprocess.run(["cargo", "run"], capture_output=True)
+            # Change the working directory to root
+            os.chdir(root)
 
-        logger.info("stdout:")
-        logger.info(r.stdout)
+            logger.info("Compiling Rust code (cargo build)...")
+            subprocess.run(["cargo", "build"])
 
+            if not os.path.exists(executable):
+                raise "Cargo build command failed"
+
+            logger.info("Executing code...")
+            r = subprocess.run([executable], capture_output=True)
+
+            logger.info("stdout: " + str(r.stdout))
+
+            if output is not None:
+                assert r.stdout == output
+        finally:
+
+            os.chdir(cwd)
 
 
 

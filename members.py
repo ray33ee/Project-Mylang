@@ -43,6 +43,7 @@ class Members(ast.NodeVisitor):
         node.member_list = self.map[self.working_class.name]
 
     def visit_InitAssign(self, node):
-        self.map[self.working_class.name].append(node.id)
+        if node.id not in self.map[self.working_class.name]:
+            self.map[self.working_class.name].append(node.id)
 
 

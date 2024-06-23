@@ -88,7 +88,9 @@ class _Unparser(ast._Unparser):
         self.write(node.id)
 
     def visit_MemberFunction(self, node):
+        self.write("(")
         self.traverse(node.exp)
+        self.write(")")
         self.write(".")
         self.write(node.id)
         with self.delimit("(", ")"):

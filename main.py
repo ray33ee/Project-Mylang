@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 
 logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
-utils.analysis(tests.test_sources[-1], True)
+source, expected_output = tests.test_sources[-1]
 
-tests.run_tests()
+utils.analysis(source, True, expected_output)
+
+#tests.run_tests()

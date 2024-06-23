@@ -78,6 +78,10 @@ class Class:
             if func.name == item:
                 funcs.append(func)
 
+        if len(funcs) == 0:
+            logger.error(f"No such function {item} in class {self.name}")
+            raise "Function not found in class"
+
         return funcs
 
 
@@ -158,5 +162,10 @@ class Table:
         for func in self.functions:
             if func.name == item:
                 funcs.append(func)
+
+
+        if len(funcs) == 0:
+            logger.error(f"No such global function or class named {item}")
+            raise "Function not found in class"
 
         return funcs
