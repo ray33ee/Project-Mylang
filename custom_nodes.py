@@ -125,3 +125,11 @@ class InitFunctionDef(ast.FunctionDef):
         self.type_comment = type_comment
         self.type_params = type_params
         self.lineno = None
+
+class SomeCall(ast.AST):
+
+    _fields = ["expr"]
+
+    def __init__(self, expr):
+        super().__init__()
+        self.expr = expr

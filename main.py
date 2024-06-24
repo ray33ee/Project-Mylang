@@ -11,6 +11,6 @@ logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
 source, expected_output = tests.test_sources[-1]
 
-utils.analysis(source, True, expected_output)
+utils.analysis(source, verbose=True, expected_stdout=expected_output, compile=True)
 
 #tests.run_tests()

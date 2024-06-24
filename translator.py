@@ -230,5 +230,8 @@ class _Translator(ast.NodeVisitor):
     def visit_FormattedValue(self, node):
         return ir.FormattedValue(self.traverse(node.value), node.conversion)
 
+    def visit_SomeCall(self, node):
+        return ir.SomeCall(self.traverse(node.expr))
+
 
 

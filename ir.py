@@ -181,6 +181,14 @@ class ClassConstructor(Expression):
         self.args = args
         self.types = types
 
+class SomeCall(Expression):
+
+    _fields = ["expr"]
+
+    def __init__(self, expr):
+        super().__init__()
+        self.expr = expr
+
 class Statement(ast.AST):
     pass
 

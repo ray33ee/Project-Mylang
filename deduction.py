@@ -151,7 +151,13 @@ class _Deduction(ast.NodeVisitor):
 
         m_types.String: {
             "__push_fmt__": {HashableList([m_types.String(), m_types.Integer()]): m_types.Ntuple([])},
-        }
+        },
+
+        m_types.Option: {
+            "is_none": {HashableList(): m_types.Boolean()},
+            "is_some": {HashableList(): m_types.Boolean()},
+            "unwrap": {HashableList(): "contained_type"},
+        },
     }
 
     def __init__(self, table: symbol_table.Table):
@@ -305,6 +311,24 @@ class _Deduction(ast.NodeVisitor):
             # Treat the mycall 'identifier(...)' as a 'identifier.__call__(...)'
             return self.visit_MemberFunction(custom_nodes.MemberFunction(ast.Name(node.id), "__call__", node.args))
 
+        if node.id == "some":
+            arg_types = self.traverse(node.args)
+
+            print(node.id)
+
+            if node.id == "some":
+
+                # some(expr) does not evaluate to a function, but it converts to rusts std::option::Option::Some(expe)
+
+                if len(arg_types) != 1:
+                    raise "some function takes exactly one argument"
+
+                a = arg_types[0]
+
+                self.working_tree_node.subs[node] = custom_nodes.SomeCall(node.args[0])
+
+                return m_types.Option(a)
+
         if node.id in self.whole_table:
 
             table_entry = self.whole_table[node.id]
@@ -313,8 +337,11 @@ class _Deduction(ast.NodeVisitor):
                 if len(table_entry) == 0:
                     raise "MyCall is not a function, object or constructor call"
                 else:
+                    # Global function call
+
                     # Get an ordered list of the argument types for the function call
                     arg_types = self.traverse(node.args)
+
                     # Get the function table entry for the function being called
                     function_table = self.match_function(arg_types, table_entry)
 
@@ -333,6 +360,8 @@ class _Deduction(ast.NodeVisitor):
 
                     return ret_type
             elif isinstance(self.whole_table[node.id], symbol_table.Class):
+                # Constructor call
+
                 # Get an ordered list of the argument types for the function call
                 arg_types = self.traverse(node.args)
 
@@ -379,8 +408,8 @@ class _Deduction(ast.NodeVisitor):
             self.working_tree_node.subs[node] = custom_nodes.MyCall(node.id, node.args, arg_types)
 
 
-    def visit_FormattedValue(self, node):
-        self.traverse(node.value)
+    def visit_JoinedStr(self, node):
+        self.traverse(node.values)
         return m_types.String()
 
     def visit_SelfMemberVariable(self, node):
@@ -450,7 +479,26 @@ class _Deduction(ast.NodeVisitor):
 
 
         # Expression is a built-in type, so to get the return type we look to the built_in_returns map
-        b = self.built_in_returns[type(ex_type)][node.id][self.HashableList([x.get_type() for x in arg_types])]
+
+        if type(ex_type) in self.built_in_returns:
+            class_map = self.built_in_returns[type(ex_type)]
+            if node.id in class_map:
+                member_function_map = class_map[node.id]
+                hm = self.HashableList([x.get_type() for x in arg_types])
+                if hm in member_function_map:
+                    b = member_function_map[hm]
+                else:
+                    logger.error(f"Type {type(ex_type)} has a member function {node.id} but no overload matches the signature: {[ast.dump(x) for x in hm.l]}")
+                    raise "See log for info"
+            else:
+                logger.error(f"Type {type(ex_type)} has no member function {node.id} in built in map")
+                raise "See log for info"
+        else:
+            logger.error(f"Type {type(ex_type)} has no entry in the built_in_map")
+            raise "See log for info"
+
+
+        #b = self.built_in_returns[type(ex_type)][node.id][self.HashableList([x.get_type() for x in arg_types])]
 
         # If the lookup returns a string, this represents an associated type. We access this type via getattr on the extype:
         if type(b) is str:

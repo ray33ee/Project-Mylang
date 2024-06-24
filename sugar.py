@@ -379,5 +379,5 @@ class _Sugar(ast.NodeTransformer):
             return node
 
     def visit_FormattedValue(self, node):
-        return ast.FormattedValue(custom_nodes.MemberFunction(self.traverse(node.value), "__str__", []), node.conversion)
+        return ast.FormattedValue(self.traverse(node.value), node.conversion)
 

@@ -10,13 +10,14 @@ import tempfile
 import shutil
 import os
 import subprocess
+import difflib
 
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-def analysis(source, verbose=False, output=None):
+def analysis(source, exe=None, verbose=False, expected_stdout=None, compile=True):
 
     # prepend the source with mylang's std:
     with open("./docs/mylang_std") as fh:
@@ -100,47 +101,60 @@ def analysis(source, verbose=False, output=None):
 
     logger.debug(s)
 
-    template_path = "E:\\Software Projects\\IntelliJ\\mylang_template"
+    if compile:
 
-    cwd = os.getcwd()
+        template_path = "E:\\Software Projects\\IntelliJ\\mylang_template"
 
-    with tempfile.TemporaryDirectory() as td:
+        cwd = os.getcwd()
 
-        try:
-            root = td + "\\template"
-            main_rs = root + "\\src\\main.rs"
-            executable = root + "\\target\\debug\\mylang_template.exe"
+        with tempfile.TemporaryDirectory() as td:
 
-            logger.info("Copying template to temporary location...")
-            # Copy the Rust template to the temporary directory
-            shutil.copytree(template_path, root)
+            try:
+                root = td + "\\template"
+                main_rs = root + "\\src\\main.rs"
+                target = root + "\\target"
+                executable = target + "\\debug\\mylang_template.exe"
 
-            logger.info("Writing Rust source...")
-            # Open main.rs with append and write then write the source to the end
-            with open(main_rs, "a") as fh:
-                fh.write(s)
+                logger.info("Copying template to temporary location...")
+                # Copy the Rust template to the temporary directory
+                shutil.copytree(template_path, root)
 
-            # Change the working directory to root
-            os.chdir(root)
+                if os.path.exists(target):
+                    shutil.rmtree(target)
 
-            logger.info("Compiling Rust code (cargo build)...")
-            subprocess.run(["cargo", "build"])
+                logger.info("Writing Rust source...")
+                # Open main.rs with append and write then write the source to the end
+                with open(main_rs, "a") as fh:
+                    fh.write(s)
 
-            if not os.path.exists(executable):
-                raise "Cargo build command failed"
+                # Change the working directory to root
+                os.chdir(root)
 
-            logger.info("Executing code...")
-            r = subprocess.run([executable], capture_output=True)
+                logger.info("Compiling Rust code (cargo build)...")
+                subprocess.run(["cargo", "build"])
 
-            logger.info("stdout: " + str(r.stdout))
+                if not os.path.exists(executable):
+                    raise "Cargo build command failed"
 
-            if output is not None:
-                assert r.stdout == output
-        finally:
+                if exe is not None:
+                    shutil.copy(executable, exe)
 
-            os.chdir(cwd)
+                logger.info("Executing code...")
+                r = subprocess.run([executable], capture_output=True)
+
+                logger.info("stdout: " + str(r.stdout))
+
+                if expected_stdout is not None:
+                    if r.stdout != expected_stdout:
+                        logger.warning("Expected output does not match actual output for test")
+                        logger.info("Expected output: " + repr(expected_stdout))
+                        logger.info("Actual output: " + repr(r.stdout))
+                        assert r.stdout == expected_stdout
 
 
+            finally:
+
+                os.chdir(cwd)
 
     if not verbose:
         logging.root.setLevel(prior_level)

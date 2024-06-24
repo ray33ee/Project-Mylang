@@ -161,7 +161,7 @@ class _Rustify(ast.NodeVisitor):
         raise NotImplemented()
 
     def visit_Option(self, node):
-        self.write("Option")
+        self.write("crate::built_ins::option::Option")
         self.comma_separated([node.contained_type], "<", ">")
 
     def visit_Result(self, node):
@@ -178,7 +178,7 @@ class _Rustify(ast.NodeVisitor):
 
     def visit_CyclicClassDef(self, node):
         self.fill()
-        self.write("#[derive(Collectable)]")
+        self.write("#[derive(dumpster::Collectable)]")
         self.fill()
         self.write("struct ")
         self.write_mangled(node)
@@ -381,32 +381,35 @@ class _Rustify(ast.NodeVisitor):
         self.write(")")
 
     def visit_SolitarySelf(self, node):
-        self.write("self")
-        logger.warning("Solitary self is not implemented yet. Rustified code may not work as expected")
+        self.write("heap::filthy_cast_to_gc(&self)")
 
     def visit_GlobalFunctionCall(self, node):
         self.write_mangled(node)
         self.comma_separated(node.args)
 
     def visit_JoinedString(self, node):
+        mangled_string_name = mangle.mangle(node)
         self.write("{ ")
-        self.write("let mut s = crate::built_ins::string::String::new(std::string::String::new()); ")
+        self.write(f"let mut {mangled_string_name} = crate::built_ins::string::String::new(std::string::String::new()); ")
         for value in node.values:
             if type(value) is ir.Constant:
                 if type(value.value) is str:
-                    self.write("s.push_slice(")
-                    self.traverse(value)
-                    self.write("); ")
+                    self.write(mangled_string_name + '.push_slice("')
+                    self.write(value.value)
+                    self.write('"); ')
                 else:
                     raise "joined string value is not a constant string"
             elif type(value) is ir.FormattedValue:
-                self.write("s._ZF12N8push_strEu(")
                 self.traverse(value.value)
-                self.write("); ")
+                self.write(f"._ZF18N12__push_fmt__Eui({mangled_string_name}.clone(), crate::built_ins::integer::Integer::new(0)); ")
             else:
                 raise "joined string value is not a constant or formatted value"
-        self.write("s }")
+        self.write(f"{mangled_string_name} }}")
 
+    def visit_SomeCall(self, node):
+        self.write("crate::built_ins::option::Option::new(std::option::Option::Some(")
+        self.traverse(node.expr)
+        self.write("))")
 
 
 

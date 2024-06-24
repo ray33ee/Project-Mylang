@@ -9,9 +9,9 @@ class MemberVariable:
     def __init__(self, id):
         self.id = id
 
-def mangle(thing):
+def mangle(obj):
     m = _Mangle()
-    m.visit(thing)
+    m.visit(obj)
     return _Mangle.MANGLE_STARTER + "".join(m.mangle)
 
 class _Mangle:
@@ -210,7 +210,10 @@ class _Mangle:
         self.generic_class(node.name, node.member_map)
 
     def visit_Assign(self, node):
-        self.generic_variable(["tmp", "var", "mangled"], id(node))
+        self.generic_variable(["assign", "var", "mangled"], id(node))
+
+    def visit_JoinedString(self, node):
+        self.generic_variable(["formatted_value", "var", "mangled"], id(node))
 
     def generic_memberassign(self, id):
         # Here we use a 'unique' value of 0 because the name [self, node.id] is enough to guarantee uniqueness
