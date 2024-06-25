@@ -127,11 +127,23 @@ class _Deduction(ast.NodeVisitor):
 
         m_types.Integer: {
             "__add__": { HashableList([m_types.Integer()]): m_types.Integer(), HashableList([m_types.Floating()]): m_types.Floating() },
+            "__mul__": { HashableList([m_types.Integer()]): m_types.Integer(), HashableList([m_types.Floating()]): m_types.Floating() },
+            "__sub__": {HashableList([m_types.Integer()]): m_types.Integer(),
+                        HashableList([m_types.Floating()]): m_types.Floating()},
+            "__mod__": {HashableList([m_types.Integer()]): m_types.Integer()},
+            "__floordiv__": {HashableList([m_types.Integer()]): m_types.Integer()},
+
             "__real__": { HashableList(): m_types.Integer()  },
             "__imag__": { HashableList(): m_types.Integer()  },
 
-            "__eq__": {HashableList([m_types.Integer()]): m_types.Boolean()},
-            "__ge__": { HashableList([m_types.Integer()]): m_types.Boolean(), HashableList([m_types.Floating()]): m_types.Boolean() },
+            "__eq__": {HashableList([m_types.Integer()]): m_types.Boolean(),
+                       HashableList([m_types.Floating()]): m_types.Boolean()},
+            "__ne__": {HashableList([m_types.Integer()]): m_types.Boolean(),
+                       HashableList([m_types.Floating()]): m_types.Boolean()},
+            "__ge__": {HashableList([m_types.Integer()]): m_types.Boolean(), HashableList([m_types.Floating()]): m_types.Boolean()},
+            "__gt__": { HashableList([m_types.Integer()]): m_types.Boolean(), HashableList([m_types.Floating()]): m_types.Boolean() },
+            "__le__": {HashableList([m_types.Integer()]): m_types.Boolean(), HashableList([m_types.Floating()]): m_types.Boolean()},
+            "__lt__": { HashableList([m_types.Integer()]): m_types.Boolean(), HashableList([m_types.Floating()]): m_types.Boolean() },
 
             "__float__": {HashableList(): m_types.Floating()},
             "__int__": {HashableList(): m_types.Integer()},
@@ -147,6 +159,8 @@ class _Deduction(ast.NodeVisitor):
         m_types.Vector: {
             "__getitem__": {HashableList([m_types.Integer()]): "element_type"},
 
+            "__len__": {HashableList(): m_types.Integer()},
+
             #"append": {HashableList([]): m_types.Ntuple([])},
         },
 
@@ -159,6 +173,11 @@ class _Deduction(ast.NodeVisitor):
             "is_some": {HashableList(): m_types.Boolean()},
             "unwrap": {HashableList(): "contained_type"},
         },
+    }
+
+    built_in_functions = {
+        "print_string": m_types.Ntuple([]),
+        "panic_string": m_types.Ntuple([]),
     }
 
     def __init__(self, table: symbol_table.Table):
@@ -409,6 +428,12 @@ class _Deduction(ast.NodeVisitor):
             arg_types = self.traverse(node.args)
 
             self.working_tree_node.subs[node] = custom_nodes.MyCall(node.id, node.args, arg_types)
+
+        if node.id in self.built_in_functions:
+            return self.built_in_functions[node.id]
+
+        logger.error(f"Could not resolve function call '{node.id}', Node: {ast.dump(node)}")
+        raise "See log"
 
 
     def visit_JoinedStr(self, node):

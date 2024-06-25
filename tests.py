@@ -311,5 +311,86 @@ def main():
 
     """, b'0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n'),
 
+    ("""
+
+
+class ContainerSlice:
+    def __init__(container, start, end, step):
+        self.container = container
+        self.start = start
+        self.end = end
+        self.step = step
+        
+    def __get_start__():
+        return self.start
+        
+    def __get_end__():
+        return self.end
+        
+    def __get_step__():
+        return self.step
+        
+    def __get_container__():
+        return self.container
+    
+    def __getitem__(index: int):
+        if index >= len(self):
+            panic("Index out of bounds")
+        return self.container[self.start + index * self.step]
+    
+    def __setitem__(index: int, value):
+        self.container[self.start + index * self.step] = value
+        
+    # This abomination obtains the number of elements in the slice
+    def __len__():
+        return max((self.end - self.start + (self.end - self.start) % self.step) // self.step, 0)
+        
+class ContainerIterator:
+    def __init__(container):
+        self.container = container
+        self.ind = 0
+        
+    def __get_container__():
+        return self.container
+        
+    def __get_ind__():
+        return self.ind
+        
+    def __set_ind__(i):
+        self.ind = i
+        
+    def __iter__():
+        return self
+    
+    def __next__():
+        if self.ind >= len(self.container):
+            return None
+    
+        r = some(self.container[self.ind])
+        
+        t = self.ind + 1
+        self.ind = t
+        
+        return r
+
+def main():
+    l = [1, 2, 3, 4, 5, 6, 7]
+    
+    s = ContainerSlice(l, 2, 5, 1)
+    
+    s_1 = ContainerSlice(s, 1, 2, 1)
+    
+    for a in ContainerIterator(l):
+        print(a)
+    
+    for a in ContainerIterator(s):
+        print(a)
+    
+    for a in ContainerIterator(s_1):
+        print(a)
+    
+
+    """, b'1\n2\n3\n4\n5\n6\n7\n3\n4\n5\n4\n'),
+
 ]
 

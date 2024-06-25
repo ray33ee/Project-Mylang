@@ -3,8 +3,22 @@
 def format(x, conversion):
     _s = ""
     x.__push_fmt__(_s, conversion)
-    print_string(_s)
+    return _s
 
 def print(x):
-    format(x, 0)
+    print_string(format(x, 0))
 
+def panic(x):
+    panic_string(format(x, 0))
+
+def max(x, y):
+    if x > y:
+        return x
+    else:
+        return y
+
+def min(x, y):
+    if x < y:
+        return x
+    else:
+        return y

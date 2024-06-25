@@ -143,6 +143,7 @@ def analysis(source, exe=None, verbose=False, expected_stdout=None, compile=True
                 r = subprocess.run([executable], capture_output=True)
 
                 logger.info("stdout: " + str(r.stdout))
+                logger.info("stderr: " + str(r.stderr))
 
                 if expected_stdout is not None:
                     if r.stdout != expected_stdout:
