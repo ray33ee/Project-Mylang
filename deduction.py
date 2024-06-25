@@ -130,7 +130,8 @@ class _Deduction(ast.NodeVisitor):
             "__real__": { HashableList(): m_types.Integer()  },
             "__imag__": { HashableList(): m_types.Integer()  },
 
-            "__eq__": { HashableList([m_types.Integer()]): m_types.Boolean()},
+            "__eq__": {HashableList([m_types.Integer()]): m_types.Boolean()},
+            "__ge__": { HashableList([m_types.Integer()]): m_types.Boolean(), HashableList([m_types.Floating()]): m_types.Boolean() },
 
             "__float__": {HashableList(): m_types.Floating()},
             "__int__": {HashableList(): m_types.Integer()},
@@ -279,6 +280,8 @@ class _Deduction(ast.NodeVisitor):
             return m_types.Floating()
         elif isinstance(node.value, str):
             return m_types.String()
+        elif node.value is None:
+            return m_types.Option(m_types.Unknown(self))
         else:
             raise NotImplemented()
 
@@ -606,7 +609,7 @@ class _Deduction(ast.NodeVisitor):
         if type(node.target) is ast.Name:
             ex_type = self.traverse(node.iter)
             logger.warning("Must add expr_type to MemberFunction")
-            self.working_tree_node.symbol_map[node.target.id] = self.traverse(custom_nodes.MemberFunction(node.iter, "__next__", []))
+            self.working_tree_node.symbol_map[node.target.id] = self.traverse(custom_nodes.MemberFunction(node.iter, "__next__", [])).contained_type
         else:
             raise "For target must be a name"
 

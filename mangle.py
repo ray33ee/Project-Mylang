@@ -10,6 +10,12 @@ class MemberVariable:
         self.id = id
 
 def mangle(obj):
+
+    if hasattr(obj, "to_mangle"):
+        if obj.to_mangle is not None:
+            if not obj.to_mangle:
+                return obj.id
+
     m = _Mangle()
     m.visit(obj)
     return _Mangle.MANGLE_STARTER + "".join(m.mangle)
@@ -195,6 +201,9 @@ class _Mangle:
         self.generic_functiondef(node)
 
     def visit_MemberFunctionDef(self, node):
+        self.generic_functiondef(node)
+
+    def visit_NextFunctionDef(self, node):
         self.generic_functiondef(node)
 
     def visit_InitFunctionDef(self, node):

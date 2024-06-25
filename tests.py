@@ -74,15 +74,6 @@ def main():
     ("""
     
 def main():
-    l = []
-    l.append(3)
-    print(l[0])
-    
-    """, b'3\n'),
-
-    ("""
-    
-def main():
     l = [4.1]
     print(l[0])
     
@@ -134,13 +125,191 @@ def main():
     
     """, b'5\n'),
 
+    ("""
+    
+class Range:
+        
+    def __init__(end):
+        self.i = 0
+        self.end = end
+        self.step = 1
+        
+    def __init__(start, end):
+        self.i = start
+        self.end = end
+        self.step = 1
+        
+    def __init__(start, end, step):
+        self.i = start
+        self.end = end
+        self.step = step
+        
+    
+    def __get_i__():
+        return self.i
+    
+    def __get_end__():
+        return self.end
+    
+    def __get_step__():
+        return self.step
+        
+    def __set_i__(i):
+        self.i = i
+        
+    def __iter__():
+        return self
+    
+    def __next__():
+        if self.i >= self.end:
+            return None
+        
+        i = self.i
+        tmp = self.i + self.step
+        self.i = tmp
+        return some(i)
+
+def main():
+    
+    for i in Range(3):
+        print(i)
+    
+    for i in Range(3, 6):
+        print(i)
+    
+    for i in Range(7, 14, 2):
+        print(i)
+
+    """, b'0\n1\n2\n3\n4\n5\n7\n9\n11\n13\n'),
+
+    ("""
+    
+class Integer:
+    def __init__(x):
+        self.x = int(x)
+    
+    def __init__():
+        self.x = 0
+    
+    def __get_x__():
+        return self.x    
+    
+    def __int__():
+        return self.x
+        
+    def __zero__():
+        return Integer()
+        
+    def __one__():
+        return Integer(1)
+    
+    def __add__(other):
+        return Integer(self.x + int(other))
+    
+    def __ge__(other):
+        return self.x >= int(other)
+    
+    def __push_fmt__(s, c):
+        self.x.__push_fmt__(s, c)
+    
+class Range:
+        
+    def __init__(end):
+        self.i = zero(end)
+        self.end = end
+        self.step = one(end)
+        
+    def __init__(start, end):
+        self.i = start
+        self.end = end
+        self.step = one(start)
+        
+    def __init__(start, end, step):
+        self.i = start
+        self.end = end
+        self.step = step
+    
+    def __get_i__():
+        return self.i
+    
+    def __get_end__():
+        return self.end
+    
+    def __get_step__():
+        return self.step
+        
+    def __set_i__(i):
+        self.i = i
+        
+    def __iter__():
+        return self
+    
+    def __next__():
+        if self.i >= self.end:
+            return None
+        
+        i = self.i
+        tmp = self.i + self.step
+        self.i = tmp
+        return some(i)
+
+def main():
+    
+    for i in Range(Integer(3)):
+        print(i)
+    
+    for i in Range(Integer(3), Integer(6)):
+        print(i)
+    
+    for i in Range(Integer(7), Integer(14), Integer(2)):
+        print(i)
+
+    """, b'0\n1\n2\n3\n4\n5\n7\n9\n11\n13\n'),
+
+    ("""
+    
+def main():
+    l = []
+    l.append(3)
+    print(l[0])
+    
+    """, b'3\n'),
+
+    ("""
+    
+class SimpleRange:
+    def __init__(max):
+        self.x = 0
+        self.max = max
+    
+    def __get_x__():
+        return self.x
+    
+    def __get_max__():
+        return self.max
+        
+    def __set_x__(x):
+        self.x = x
+        
+    def __iter__():
+        return self
+    
+    def __next__():
+        if self.x >= self.max:
+            return None
+        
+        x = self.x
+        tmp = self.x + 1
+        self.x = tmp
+        return some(x)
+
+def main():
+    it = SimpleRange(10)
+    
+    for i in SimpleRange(10):
+        print(i)
+
+    """, b'0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n'),
+
 ]
 
-def run_tests():
-    import utils
-
-    for source, expected_output in test_sources:
-        #source, expected_output = test_sources[-1]
-        utils.analysis(source, True, expected_output)
-
-    logger.debug(f"All {len(test_sources)} test passed")

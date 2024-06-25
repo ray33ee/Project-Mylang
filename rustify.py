@@ -24,6 +24,7 @@ class _Rustify(ast.NodeVisitor):
         self.code = []
         self.indent = 0
         self.in_class = False
+        self.next_function = None
 
     def write(self, text):
         if type(text) is str:
@@ -69,13 +70,16 @@ class _Rustify(ast.NodeVisitor):
         else:
             self.visit(node)
 
-    def write_mangled(self, item):
-
+    def get_mangled_name(self, node):
         import mangle
 
-        m = mangle.mangle(item)
+        m = mangle.mangle(node)
 
-        self.write(str(m))
+        return str(m)
+
+    def write_mangled(self, item):
+
+        self.write(self.get_mangled_name(item))
 
     def comma_separated(self, node, start="(", end=")", separator=", ", prepend=""):
         with self.delimit(start, end):
@@ -177,6 +181,7 @@ class _Rustify(ast.NodeVisitor):
         self.traverse(node.classes)
 
     def visit_CyclicClassDef(self, node):
+
         self.fill()
         self.write("#[derive(dumpster::Collectable)]")
         self.fill()
@@ -192,6 +197,21 @@ class _Rustify(ast.NodeVisitor):
         with self.block():
             with self.class_block():
                 self.traverse(node.functions)
+
+        if self.next_function is not None:
+            self.fill()
+            self.write("impl std::iter::Iterator for ")
+            self.write_mangled(node)
+            with self.block():
+                with self.statement():
+                    self.write("type Item = ")
+                    self.visit(self.next_function)
+                self.write("""
+    fn next(&mut self) -> std::option::Option<Self::Item> {
+        crate::heap::mut_ref_gc(&self._ZF11N8__next__E().s).clone()
+    }
+                """)
+
 
     def generic_function(self, node, is_main=False, prepend="", members=None):
         self.fill()
@@ -242,6 +262,10 @@ class _Rustify(ast.NodeVisitor):
 
         self.generic_function(node, prepend=prepend)
 
+    def visit_NextFunctionDef(self, node):
+        self.visit_MemberFunctionDef(node)
+        self.next_function = node.ret_type.contained_type
+
     def visit_InitFunctionDef(self, node):
         self.generic_function(node, members=node.member_list)
 
@@ -289,8 +313,9 @@ class _Rustify(ast.NodeVisitor):
         self.fill()
         self.write("for ")
         self.traverse(node.target)
-        self.write(" in ")
+        self.write(" in crate::heap::mut_ref_gc(&")
         self.traverse(node.iterator)
+        self.write(")")
         with self.block():
             self.traverse(node.body)
 
@@ -298,6 +323,7 @@ class _Rustify(ast.NodeVisitor):
         self.fill()
         self.write("while ")
         self.traverse(node.condition)
+        self.write(".get_bool()")
         with self.block():
             self.traverse(node.body)
 
@@ -305,6 +331,7 @@ class _Rustify(ast.NodeVisitor):
         self.fill()
         self.write("if ")
         self.traverse(node.condition)
+        self.write(".get_bool()")
         with self.block():
             self.traverse(node.if_block)
         if len(node.else_block) > 0:
@@ -369,6 +396,8 @@ class _Rustify(ast.NodeVisitor):
             self.write("built_ins::float::Float::new(")
             self.write(str(node.value))
             self.write(")")
+        elif node.value is None:
+            self.write("crate::built_ins::option::Option::new(std::option::Option::None)")
         else:
             self.write(str(node.value))
 

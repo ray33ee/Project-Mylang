@@ -105,7 +105,12 @@ class _Translator(ast.NodeVisitor):
             # Member function
             usr = self.working_tree.parent_class_type
 
-            self.class_map[usr].add_function(ir.MemberFunctionDef(ir_function))
+            if ir_function.name == "__next__":
+                de = ir.NextFunctionDef(ir_function)
+            else:
+                de = ir.MemberFunctionDef(ir_function)
+
+            self.class_map[usr].add_function(de)
         else:
             # Global function
             if ir_function.name == "main":
@@ -213,7 +218,13 @@ class _Translator(ast.NodeVisitor):
         if type(node.exp_type) is m_types.UserClass:
             return ir.UserClassMemberFunction(exp, node.id, self.traverse(node.args), node.types)
         else:
-            return ir.BuiltInMemberFunction(exp, node.id, self.traverse(node.args), node.types)
+
+            to_mangle = True
+
+            if type(node.exp_type) is m_types.Vector and node.id == "append":
+                to_mangle = False
+
+            return ir.BuiltInMemberFunction(exp, node.id, self.traverse(node.args), node.types, to_mangle)
 
     def visit_ConstructorCall(self, node):
         return ir.ClassConstructor(node.class_id, self.traverse(node.args), node.types)

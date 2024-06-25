@@ -105,12 +105,14 @@ class BuiltInMemberFunction(FunctionCall):
 
     _fields = ["expr", "id", "args", "types"]
 
-    def __init__(self, expr: Expression, _id: str, args: list[Expression], types):
+    def __init__(self, expr: Expression, _id: str, args: list[Expression], types, to_mangle=True):
         super().__init__()
         self.expr = expr
         self.id = _id
         self.args = args
         self.types = types
+        self.to_mangle = to_mangle
+
 
 
 class UserClassMemberFunction(FunctionCall):
@@ -311,6 +313,12 @@ class MemberFunctionDef(FunctionDef):
         super().__init__(ir_func.name, ir_func.args)
         self.body = ir_func.body
         self.ret_type = ir_func.ret_type
+
+
+class NextFunctionDef(MemberFunctionDef):
+
+    def __init__(self, ir_func: FunctionDef):
+        super().__init__(ir_func)
 
 
 
