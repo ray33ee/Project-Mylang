@@ -177,7 +177,7 @@ class ClassConstructor(Expression):
 
     _fields = ["usr_class", "args"]
 
-    def __init__(self, usr_class: m_types.UserClass, args, types):
+    def __init__(self, usr_class, args, types):
         super().__init__()
         self.usr_class = usr_class
         self.args = args
@@ -190,6 +190,13 @@ class SomeCall(Expression):
     def __init__(self, expr):
         super().__init__()
         self.expr = expr
+
+class BytesCall(Expression):
+
+    _fields = []
+
+    def __init__(self):
+        super().__init__()
 
 class Statement(ast.AST):
     pass
@@ -346,6 +353,11 @@ class ClassDef(ast.AST):
     def __repr__(self):
         return f"Class('{self.name}', {self.member_map}, {repr(self.functions)})"
 
+class RustUserClassCall():
+
+    def __init__(self, class_name, class_init):
+        self.class_name = class_name
+        self.class_init = class_init
 
 # Represents a class that exists on the heap with cyclic reference counting
 class CyclicClassDef(ClassDef):
@@ -388,7 +400,6 @@ class Module(ast.AST):
 
     def __repr__(self):
         return f"Module(functions={repr(self.functions)}, classes={repr(self.classes)})"
-
 
 
 

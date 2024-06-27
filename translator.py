@@ -72,9 +72,14 @@ class _Translator(ast.NodeVisitor):
     def visit(self, node):
 
         if node in self.working_tree.subs:
-            return super().visit(self.working_tree.subs[node])
+            n = self.working_tree.subs[node]
+
         else:
-            return super().visit(node)
+            n = node
+
+        method = 'visit_' + n.__class__.__name__
+        visitor = getattr(self, method)
+        return visitor(n)
 
     def traverse(self, node):
 
@@ -215,7 +220,11 @@ class _Translator(ast.NodeVisitor):
         else:
             exp = self.traverse(node.exp)
 
+        print(type(node.exp_type))
+
         if type(node.exp_type) is m_types.UserClass:
+            return ir.UserClassMemberFunction(exp, node.id, self.traverse(node.args), node.types)
+        elif type(node.exp_type) is m_types.RustyCustomClass:
             return ir.UserClassMemberFunction(exp, node.id, self.traverse(node.args), node.types)
         else:
 
@@ -223,6 +232,8 @@ class _Translator(ast.NodeVisitor):
 
             if type(node.exp_type) is m_types.Vector and node.id == "append":
                 to_mangle = False
+
+
 
             return ir.BuiltInMemberFunction(exp, node.id, self.traverse(node.args), node.types, to_mangle)
 
@@ -243,6 +254,12 @@ class _Translator(ast.NodeVisitor):
 
     def visit_SomeCall(self, node):
         return ir.SomeCall(self.traverse(node.expr))
+
+    def visit_BytesCall(self, node):
+        return ir.BytesCall()
+
+    def visit_RustUserClassCall(self, node):
+        return ir.RustUserClassCall(node.class_name, node.class_init)
 
 
 

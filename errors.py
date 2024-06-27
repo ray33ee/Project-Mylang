@@ -16,7 +16,7 @@ class ClassMissingInitException(Exception):
 
     def __str__(self):
         return f"Class '{self.offending_class.name}' has no __init__ method. Every class MUST contain a constructor"
-
+        
 
 class WrongNumberOfComparisons(Exception):
     def __str__(self):

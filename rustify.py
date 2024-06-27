@@ -63,6 +63,11 @@ class _Rustify(ast.NodeVisitor):
         yield
         self.write(";")
 
+    def visit(self, node):
+        method = 'visit_' + node.__class__.__name__
+        visitor = getattr(self, method)
+        return visitor(node)
+
     def traverse(self, node):
         if type(node) is list:
             for n in node:
@@ -130,13 +135,13 @@ class _Rustify(ast.NodeVisitor):
         self.traverse(node.annotation)
 
     def visit_Boolean(self, node):
-        self.write("built_ins::bool::Bool")
+        self.write("built_ins::Bool::Bool")
 
     def visit_Integer(self, node):
-        self.write("built_ins::integer::Integer")
+        self.write("built_ins::Integer::Integer")
 
     def visit_Floating(self, node):
-        return self.write("built_ins::float::Float")
+        return self.write("built_ins::Float::Float")
 
     def visit_Char(self, node):
         raise NotImplemented()
@@ -148,15 +153,15 @@ class _Rustify(ast.NodeVisitor):
         self.comma_separated(node.tuple_types)
 
     def visit_Vector(self, node):
-        self.write("built_ins::list::List<")
+        self.write("built_ins::List::List<")
         self.traverse(node.element_type)
         self.write(">")
 
     def visit_String(self, node):
-        self.write("built_ins::string::String")
+        self.write("built_ins::String::String")
 
     def visit_Bytes(self, node):
-        raise NotImplemented()
+        self.write("built_ins::Bytes::Bytes")
 
     def visit_Dictionary(self, node):
         raise NotImplemented()
@@ -165,7 +170,7 @@ class _Rustify(ast.NodeVisitor):
         raise NotImplemented()
 
     def visit_Option(self, node):
-        self.write("crate::built_ins::option::Option")
+        self.write("crate::built_ins::Option::Option")
         self.comma_separated([node.contained_type], "<", ">")
 
     def visit_Result(self, node):
@@ -347,6 +352,12 @@ class _Rustify(ast.NodeVisitor):
         self.write(str(mangle.mangle(ir.FunctionDef("__init__", node.types))))
         self.comma_separated(node.args)
 
+    def visit_RustUserClassCall(self, node):
+        self.write(node.class_name)
+        self.write("::")
+        self.write(node.class_init)
+        self.write("()")
+
     def visit_IRTuple(self, node):
         self.comma_separated(node.elements)
 
@@ -376,6 +387,7 @@ class _Rustify(ast.NodeVisitor):
         self.comma_separated(node.args)
 
     def visit_BuiltInMemberFunction(self, node):
+        print(ast.dump(node))
         self.traverse(node.expr)
         self.write(".")
         self.write_mangled(node)
@@ -383,21 +395,21 @@ class _Rustify(ast.NodeVisitor):
 
     def visit_Constant(self, node):
         if type(node.value) is str:
-            self.write(f'crate::built_ins::string::String::new(std::string::String::from("{str(node.value)}"))')
+            self.write(f'crate::built_ins::String::String::new(std::string::String::from("{str(node.value)}"))')
         elif type(node.value) is bool:
-            self.write("built_ins::bool::Bool::new(")
+            self.write("built_ins::Bool::Bool::new(")
             self.write(str(node.value).lower())
             self.write(")")
         elif type(node.value) is int:
-            self.write("built_ins::integer::Integer::new(")
+            self.write("built_ins::Integer::Integer::new(")
             self.write(str(node.value))
             self.write(")")
         elif type(node.value) is float:
-            self.write("built_ins::float::Float::new(")
+            self.write("built_ins::Float::Float::new(")
             self.write(str(node.value))
             self.write(")")
         elif node.value is None:
-            self.write("crate::built_ins::option::Option::new(std::option::Option::None)")
+            self.write("crate::built_ins::Option::Option::new(std::option::Option::None)")
         else:
             self.write(str(node.value))
 
@@ -405,7 +417,7 @@ class _Rustify(ast.NodeVisitor):
         self.comma_separated(node.elements)
 
     def visit_List(self, node):
-        self.write("built_ins::list::List::new(vec!")
+        self.write("built_ins::List::List::new(vec!")
         self.comma_separated(node.elements, start='[', end=']')
         self.write(")")
 
@@ -419,7 +431,7 @@ class _Rustify(ast.NodeVisitor):
     def visit_JoinedString(self, node):
         mangled_string_name = mangle.mangle(node)
         self.write("{ ")
-        self.write(f"let mut {mangled_string_name} = crate::built_ins::string::String::new(std::string::String::new()); ")
+        self.write(f"let mut {mangled_string_name} = crate::built_ins::String::String::new(std::string::String::new()); ")
         for value in node.values:
             if type(value) is ir.Constant:
                 if type(value.value) is str:
@@ -430,15 +442,18 @@ class _Rustify(ast.NodeVisitor):
                     raise "joined string value is not a constant string"
             elif type(value) is ir.FormattedValue:
                 self.traverse(value.value)
-                self.write(f"._ZF18N12__push_fmt__Eui({mangled_string_name}.clone(), crate::built_ins::integer::Integer::new(0)); ")
+                self.write(f"._ZF18N12__push_fmt__Eui({mangled_string_name}.clone(), crate::built_ins::Integer::Integer::new(0)); ")
             else:
                 raise "joined string value is not a constant or formatted value"
         self.write(f"{mangled_string_name} }}")
 
     def visit_SomeCall(self, node):
-        self.write("crate::built_ins::option::Option::new(std::option::Option::Some(")
+        self.write("crate::built_ins::Option::Option::new(std::option::Option::Some(")
         self.traverse(node.expr)
         self.write("))")
+
+    def visit_BytesCall(self, node):
+        self.write("crate::built_ins::Bytes::Bytes::new(vec![])")
 
 
 

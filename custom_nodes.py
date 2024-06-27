@@ -133,3 +133,19 @@ class SomeCall(ast.AST):
     def __init__(self, expr):
         super().__init__()
         self.expr = expr
+
+class BytesCall(ast.AST):
+
+    _fields = []
+
+    def __init__(self):
+        super().__init__()
+
+class RustUserClassCall(ast.AST):
+
+    _fields = []
+
+    def __init__(self, class_name, class_init):
+        super().__init__()
+        self.class_name = class_name
+        self.class_init = class_init

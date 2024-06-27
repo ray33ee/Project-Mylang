@@ -3,12 +3,12 @@ import ast
 import custom_nodes
 import errors
 import m_types
+import parse_template
 import symbol_table
 import ir
 import logging
 
 logger = logging.getLogger(__name__)
-
 
 def deduce(table: symbol_table.Table):
     t = _Deduction(table)
@@ -160,8 +160,6 @@ class _Deduction(ast.NodeVisitor):
             "__getitem__": {HashableList([m_types.Integer()]): "element_type"},
 
             "__len__": {HashableList(): m_types.Integer()},
-
-            #"append": {HashableList([]): m_types.Ntuple([])},
         },
 
         m_types.String: {
@@ -336,8 +334,6 @@ class _Deduction(ast.NodeVisitor):
         if node.id == "some":
             arg_types = self.traverse(node.args)
 
-            print(node.id)
-
             if node.id == "some":
 
                 # some(expr) does not evaluate to a function, but it converts to rusts std::option::Option::Some(expe)
@@ -350,6 +346,16 @@ class _Deduction(ast.NodeVisitor):
                 self.working_tree_node.subs[node] = custom_nodes.SomeCall(node.args[0])
 
                 return m_types.Option(a)
+
+        if node.id == "byte_array":
+
+            if len(node.args) != 0:
+                raise "Bytes function takes no arguments"
+
+            self.working_tree_node.subs[node] = custom_nodes.BytesCall()
+
+            return m_types.Bytes()
+
 
         if node.id in self.whole_table:
 
@@ -469,6 +475,9 @@ class _Deduction(ast.NodeVisitor):
         return ret_type
 
 
+    def visit_RustUserClassCall(self, node):
+        return m_types.RustyCustomClass(node.class_name, node.class_init)
+
     def handle_builtin(self, node, ex_type, arg_types):
 
         # If any arg_types are unknowns, we need to add these ass dependents to ex_type
@@ -508,25 +517,7 @@ class _Deduction(ast.NodeVisitor):
 
         # Expression is a built-in type, so to get the return type we look to the built_in_returns map
 
-        if type(ex_type) in self.built_in_returns:
-            class_map = self.built_in_returns[type(ex_type)]
-            if node.id in class_map:
-                member_function_map = class_map[node.id]
-                hm = self.HashableList([x.get_type() for x in arg_types])
-                if hm in member_function_map:
-                    b = member_function_map[hm]
-                else:
-                    logger.error(f"Type {type(ex_type)} has a member function {node.id} but no overload matches the signature: {[ast.dump(x) for x in hm.l]}")
-                    raise "See log for info"
-            else:
-                logger.error(f"Type {type(ex_type)} has no member function {node.id} in built in map")
-                raise "See log for info"
-        else:
-            logger.error(f"Type {type(ex_type)} has no entry in the built_in_map")
-            raise "See log for info"
-
-
-        #b = self.built_in_returns[type(ex_type)][node.id][self.HashableList([x.get_type() for x in arg_types])]
+        b = parse_template.bim.get_item(type(ex_type), node.id, arg_types)
 
         # If the lookup returns a string, this represents an associated type. We access this type via getattr on the extype:
         if type(b) is str:
@@ -554,6 +545,8 @@ class _Deduction(ast.NodeVisitor):
         # Get an ordered list of the argument types for the function call
         arg_types = self.traverse(node.args)
 
+        print(type(ex_type))
+
         if type(ex_type) is m_types.UserClass:
 
             class_name = ex_type.identifier
@@ -576,7 +569,11 @@ class _Deduction(ast.NodeVisitor):
             self.working_tree_node = parent
 
             return ret_type
-
+        elif type(ex_type) is m_types.RustyCustomClass:
+            logger.warning("We still need to figure out the return type of rusty member functions. Maybe modify parse template to do this?")
+            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
+                                                                                   arg_types, m_types.UserClass("_Hasher", [ir.Member("self.digest", m_types.Integer())]))
+            return m_types.Integer()
         else:
 
             return self.handle_builtin(node, ex_type, arg_types)

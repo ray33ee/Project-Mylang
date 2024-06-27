@@ -11,7 +11,7 @@ def sugar(node: ast.AST):
 class _Sugar(ast.NodeTransformer):
 
     built_in_set = {"float", "int", "complex", "id", "char", "str", "repr", "bool", "abs", "len", "iter",
-                    "next", "path", "real", "imag", "bytes", "zero", "one"}
+                    "next", "path", "real", "imag", "bytes", "zero", "one", "hash"}
 
     def __init__(self):
         super().__init__()
@@ -184,6 +184,14 @@ class _Sugar(ast.NodeTransformer):
         elif isinstance(node.func, ast.expr):
 
             if isinstance(node.func, ast.Attribute):
+
+                if type(node.func.value) is ast.Name:
+                    if node.func.value.id[:3] == "_ZC" and node.func.attr[:3] == "_ZF":
+                        print(node.func.value.id)
+                        print(node.func.attr)
+                        return custom_nodes.RustUserClassCall(node.func.value.id, node.func.attr)
+
+
 
                 return self.member_function(node.func.value, node.func.attr, node.args)
 

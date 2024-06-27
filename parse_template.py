@@ -2,7 +2,9 @@ import os
 
 import logging
 import re
+import ast
 
+import ir
 import m_types
 
 logger = logging.getLogger(__name__)
@@ -44,12 +46,16 @@ class Parser:
 
             self.parse_file(class_name)
 
+        self.add_exceptions()
+
+        print(self.map)
+
 
 
     # Some functions do not conform to the rules we use, so rather than adding complex code to include them,
     # we simply manually add them in this function
     def add_exceptions(self):
-        pass
+        self.add_item(m_types.Integer, "__hash__", [m_types.UserClass("_Hasher", [ir.Member("self.digest", m_types.Integer())])], [])
 
     def get_closing_brace(self, string):
         tracker = 0
@@ -107,7 +113,7 @@ class Parser:
 
             _, signature, end = ret
 
-            self.parse_function(class_name, ''.join(signature.split()))
+            self.parse_function(self.parse_type(class_name), ''.join(signature.split()))
 
             inner_impl = inner_impl[end:]
 
@@ -131,7 +137,10 @@ class Parser:
 
             name = m.group("name")
             arg_types = self.parse_args(m.group("args"))
-            ret_type = self.parse_type(m.group("ret"))
+            if m.group("ret") is None:
+                ret_type = m_types.Ntuple([])
+            else:
+                ret_type = self.parse_type(m.group("ret"), False)
 
         else:
             return None
@@ -141,38 +150,85 @@ class Parser:
     def parse_args(self, arg_string):
         regex = ",[_0-9a-zA-z]+:(?P<type>[_0-9a-zA-z]+)"
 
-        return [self.parse_type(m.group("type"), True) for m in re.finditer(regex, arg_string)]
+        return [self.parse_type(m.group("type"), False) for m in re.finditer(regex, arg_string)]
 
-    def parse_type(self, t, instantiate=False):
+    def parse_type(self, t, type_of=True):
 
         if t == "Integer":
-            r = m_types.Integer
+            r = m_types.Integer()
         elif t == "Float":
-            r = m_types.Floating
+            r = m_types.Floating()
         elif t == "Bool":
-            r = m_types.Boolean
+            r = m_types.Boolean()
         elif t == "String":
-            r = m_types.String
+            r = m_types.String()
         elif t is None:
             r = m_types.Ntuple([])
         elif t == "T": # Templated list
             r = "element_type"
         elif t == "O": # Templated Option
             r = "contained_type"
+        elif t == "List":
+            r = m_types.Vector(m_types.Ntuple([]))
+        elif t == "Option":
+            r = m_types.Option(m_types.Ntuple([]))
+        elif t == "Bytes":
+            r = m_types.Bytes()
         else:
             logger.error(f"Not implemented for {t}")
             raise NotImplemented()
 
-        if instantiate and type(r) is not str:
-            return r()
+        if type_of and type(r) is not str:
+            return type(r)
         else:
             return r
 
     def add_item(self, class_name, func_name, args, ret_type):
-        print((class_name, func_name, args, ret_type))
+
+        if class_name not in self.map:
+            self.map[class_name] = {}
+
+        class_map = self.map[class_name]
+
+        if func_name not in class_map:
+            class_map[func_name] = {}
+
+        func_map = class_map[func_name]
+
+        hashable_list = self.HashableList(args)
+
+        if hashable_list in func_map:
+            pass
+            # error
+
+        func_map[hashable_list] = ret_type
 
     # Function to find the return type of a mamber function 'func_name' in class 'class_name' with 'args.
     # If the lookup fails then the function should panic, warning the user that there is no entry
     # (suggest that maybe the function is a Rust template and to make sure it is in the 'add_exceptions' function)
     def get_item(self, class_name, func_name, args):
-        pass
+
+        if class_name in self.map:
+            class_map = self.map[class_name]
+            if func_name in class_map:
+                member_function_map = class_map[func_name]
+                hm = self.HashableList([x.get_type() for x in args])
+                if hm in member_function_map:
+                    b = member_function_map[hm]
+                else:
+                    logger.error(f"Type {class_name} has a member function {func_name} but no overload matches the signature: {[ast.dump(x) for x in hm.l]}")
+                    raise "See log for info"
+            else:
+                logger.error(f"Type {class_name} has no member function {func_name} in built in map")
+                raise "See log for info"
+        else:
+            logger.error(f"Type {class_name} has no entry in the built_in_map")
+            raise "See log for info"
+
+        return b
+
+    def __contains__(self, item):
+        return item in self.map
+
+
+bim = Parser()
