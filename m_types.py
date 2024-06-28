@@ -193,15 +193,3 @@ class UserClass(MType):
         self.identifier = identifier
         self.member_types = member_types
 
-
-class RustyCustomClass():
-
-    _fields = []
-
-    def __init__(self, class_name, class_init):
-        super().__init__()
-        self.class_name = class_name
-        self.class_init = class_init
-
-    def get_type(self):
-        return UserClass("_Hasher", [ir.Member("self.digest", Integer())])

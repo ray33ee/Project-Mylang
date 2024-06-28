@@ -475,9 +475,6 @@ class _Deduction(ast.NodeVisitor):
         return ret_type
 
 
-    def visit_RustUserClassCall(self, node):
-        return m_types.RustyCustomClass(node.class_name, node.class_init)
-
     def handle_builtin(self, node, ex_type, arg_types):
 
         # If any arg_types are unknowns, we need to add these ass dependents to ex_type
@@ -569,11 +566,6 @@ class _Deduction(ast.NodeVisitor):
             self.working_tree_node = parent
 
             return ret_type
-        elif type(ex_type) is m_types.RustyCustomClass:
-            logger.warning("We still need to figure out the return type of rusty member functions. Maybe modify parse template to do this?")
-            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
-                                                                                   arg_types, m_types.UserClass("_Hasher", [ir.Member("self.digest", m_types.Integer())]))
-            return m_types.Integer()
         else:
 
             return self.handle_builtin(node, ex_type, arg_types)

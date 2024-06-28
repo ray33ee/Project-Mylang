@@ -333,23 +333,7 @@ def main():
 
     """, b'1\n2\n3\n4\n5\n6\n7\n3\n4\n5\n4\n'),
 
-    ("""
 
-
-
-def Hasher():
-    h = _ZC11N7_HasherEi._ZF11N8__init__E()
-    return h
-
-def main():
-    h = Hasher()
-    
-    hash(700, h)
-    hash(44, h)
-    
-    print(h.finalise())
-    
-    """, b'100\n0\n0\n0\n0\n0\n0\n0\n')
 
 ]
 

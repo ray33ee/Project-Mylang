@@ -224,8 +224,6 @@ class _Translator(ast.NodeVisitor):
 
         if type(node.exp_type) is m_types.UserClass:
             return ir.UserClassMemberFunction(exp, node.id, self.traverse(node.args), node.types)
-        elif type(node.exp_type) is m_types.RustyCustomClass:
-            return ir.UserClassMemberFunction(exp, node.id, self.traverse(node.args), node.types)
         else:
 
             to_mangle = True
@@ -257,9 +255,6 @@ class _Translator(ast.NodeVisitor):
 
     def visit_BytesCall(self, node):
         return ir.BytesCall()
-
-    def visit_RustUserClassCall(self, node):
-        return ir.RustUserClassCall(node.class_name, node.class_init)
 
 
 

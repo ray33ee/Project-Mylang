@@ -197,7 +197,4 @@ class _Unparser(ast._Unparser):
             self.write(", ")
             self.traverse(node.err_type)
 
-    def visit_RustUserClassCall(self, node):
-        self.write(node.class_name)
-        self.write(".")
-        self.write(node.class_init)
+

@@ -240,9 +240,6 @@ class _Mangle:
     def visit_TestClass(self, node):
         self.generic_class(node.name, node.members)
 
-    def visit_RustyCustomClass(self, node):
-        self.write(node.class_name)
-
 
 class TestFunction:
 

@@ -185,13 +185,6 @@ class _Sugar(ast.NodeTransformer):
 
             if isinstance(node.func, ast.Attribute):
 
-                if type(node.func.value) is ast.Name:
-                    if node.func.value.id[:3] == "_ZC" and node.func.attr[:3] == "_ZF":
-                        print(node.func.value.id)
-                        print(node.func.attr)
-                        return custom_nodes.RustUserClassCall(node.func.value.id, node.func.attr)
-
-
 
                 return self.member_function(node.func.value, node.func.attr, node.args)
 

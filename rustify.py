@@ -352,12 +352,6 @@ class _Rustify(ast.NodeVisitor):
         self.write(str(mangle.mangle(ir.FunctionDef("__init__", node.types))))
         self.comma_separated(node.args)
 
-    def visit_RustUserClassCall(self, node):
-        self.write(node.class_name)
-        self.write("::")
-        self.write(node.class_init)
-        self.write("()")
-
     def visit_IRTuple(self, node):
         self.comma_separated(node.elements)
 

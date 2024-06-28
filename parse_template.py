@@ -35,7 +35,7 @@ class Parser:
         def __repr__(self):
             return f"HashableList({repr(self.l)})"
 
-    path = "E:\\Software Projects\\IntelliJ\\mylang_template\\src\\built_ins"
+    path = "C:/Users/Will/Documents/GitHub/mylang_template/src/built_ins"
 
     def __init__(self):
 

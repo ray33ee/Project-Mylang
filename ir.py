@@ -353,11 +353,6 @@ class ClassDef(ast.AST):
     def __repr__(self):
         return f"Class('{self.name}', {self.member_map}, {repr(self.functions)})"
 
-class RustUserClassCall():
-
-    def __init__(self, class_name, class_init):
-        self.class_name = class_name
-        self.class_init = class_init
 
 # Represents a class that exists on the heap with cyclic reference counting
 class CyclicClassDef(ClassDef):
