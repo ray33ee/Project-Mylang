@@ -35,27 +35,32 @@ class Parser:
         def __repr__(self):
             return f"HashableList({repr(self.l)})"
 
-    path = "C:/Users/Will/Documents/GitHub/mylang_template/src/built_ins"
 
-    def __init__(self):
+    def __init__(self, path):
 
         self.map = {}
 
-        for file in os.listdir(self.path):
-            class_name = file[:-3]
+        self.path = path
 
-            self.parse_file(class_name)
+        for file in os.listdir(self.path):
+            print(file)
+            if os.path.isfile(self.path + "/" + file):
+                class_name = file[:-3]
+
+                self.parse_file(class_name)
+
+
 
         self.add_exceptions()
 
-        print(self.map)
 
 
 
     # Some functions do not conform to the rules we use, so rather than adding complex code to include them,
     # we simply manually add them in this function
     def add_exceptions(self):
-        self.add_item(m_types.Integer, "__hash__", [m_types.UserClass("_Hasher", [ir.Member("self.digest", m_types.Integer())])], [])
+        #self.add_item(m_types.Integer, "__hash__", [m_types.UserClass("_Hasher", [ir.Member("self.digest", m_types.Integer())])], [])
+        pass
 
     def get_closing_brace(self, string):
         tracker = 0
@@ -174,6 +179,8 @@ class Parser:
             r = m_types.Option(m_types.Ntuple([]))
         elif t == "Bytes":
             r = m_types.Bytes()
+        elif t == "Hasher":
+            r = "Hasher"
         else:
             logger.error(f"Not implemented for {t}")
             raise NotImplemented()
@@ -230,5 +237,12 @@ class Parser:
     def __contains__(self, item):
         return item in self.map
 
+PATH = "C:/Users/Will/Documents/GitHub/mylang_template/src"
 
-bim = Parser()
+bim = Parser(PATH + "/built_ins")
+
+print(bim.map)
+
+built_in_classes = Parser(PATH + "/classes")
+
+print(built_in_classes.map)

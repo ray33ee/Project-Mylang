@@ -438,6 +438,14 @@ class _Deduction(ast.NodeVisitor):
         if node.id in self.built_in_functions:
             return self.built_in_functions[node.id]
 
+        print(ast.dump(node))
+
+        if node.id in parse_template.built_in_classes:
+            arg_types = self.traverse(node.args)
+
+            self.working_tree_node.subs[node] = custom_nodes.BuiltInClassConstructor(node.id, node.args, arg_types)
+            return m_types.BuiltInClass(node.id)
+
         logger.error(f"Could not resolve function call '{node.id}', Node: {ast.dump(node)}")
         raise "See log"
 

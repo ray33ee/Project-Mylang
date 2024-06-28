@@ -103,7 +103,7 @@ def analysis(source, exe=None, verbose=False, expected_stdout=None, compile=True
 
     if compile:
 
-        template_path = "E:\\Software Projects\\IntelliJ\\mylang_template"
+        template_path = "C:\\Users\\Will\\Documents\\GitHub\\mylang_template"
 
         cwd = os.getcwd()
 
@@ -151,6 +151,7 @@ def analysis(source, exe=None, verbose=False, expected_stdout=None, compile=True
                         logger.info("Expected output: " + repr(expected_stdout))
                         logger.info("Actual output: " + repr(r.stdout))
                         assert r.stdout == expected_stdout
+                        logger.info("Stdout test passed.")
 
 
             finally:

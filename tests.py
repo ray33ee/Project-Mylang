@@ -333,6 +333,18 @@ def main():
 
     """, b'1\n2\n3\n4\n5\n6\n7\n3\n4\n5\n4\n'),
 
+    ("""
+    
+def main():
+    h = Hasher()
+    
+    hash(100, h)
+    hash(44, h)
+    
+    print(h.finalise())
+    
+    """, None)
+
 
 
 ]

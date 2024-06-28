@@ -345,12 +345,24 @@ class _Rustify(ast.NodeVisitor):
             with self.block():
                 self.traverse(node.else_block)
 
-    def visit_ClassConstructor(self, node):
-        self.write_mangled(node.usr_class)
-        self.write("::")
 
+    def generic_constructor_call(self, node, usr_class):
+        if type(usr_class) is str:
+            self.write("crate::classes::")
+            self.write(node.id)
+            self.write("::")
+            self.write(node.id)
+        else:
+            self.write_mangled(usr_class)
+        self.write("::")
         self.write(str(mangle.mangle(ir.FunctionDef("__init__", node.types))))
         self.comma_separated(node.args)
+
+    def visit_ClassConstructor(self, node):
+        self.generic_constructor_call(node, node.usr_class)
+
+    def visit_BuiltInClassConstructor(self, node):
+        self.generic_constructor_call(node, node.id)
 
     def visit_IRTuple(self, node):
         self.comma_separated(node.elements)
@@ -448,6 +460,9 @@ class _Rustify(ast.NodeVisitor):
 
     def visit_BytesCall(self, node):
         self.write("crate::built_ins::Bytes::Bytes::new(vec![])")
+
+
+
 
 
 

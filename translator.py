@@ -256,5 +256,8 @@ class _Translator(ast.NodeVisitor):
     def visit_BytesCall(self, node):
         return ir.BytesCall()
 
+    def visit_BuiltInClassConstructor(self, node):
+        return ir.BuiltInClassConstructor(node.class_id, node.args, node.types)
+
 
 

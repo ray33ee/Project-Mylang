@@ -141,3 +141,10 @@ class BytesCall(ast.AST):
     def __init__(self):
         super().__init__()
 
+
+class BuiltInClassConstructor(ConstructorCall):
+
+
+    def __init__(self, id, args, types=None):
+        super().__init__(id, args, types)
+

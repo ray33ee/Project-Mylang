@@ -396,5 +396,14 @@ class Module(ast.AST):
     def __repr__(self):
         return f"Module(functions={repr(self.functions)}, classes={repr(self.classes)})"
 
+class BuiltInClassConstructor(Expression):
+
+    _fields = ["id", "args"]
+
+    def __init__(self, id, args, types):
+        super().__init__()
+        self.id = id
+        self.args = args
+        self.types = types
 
 

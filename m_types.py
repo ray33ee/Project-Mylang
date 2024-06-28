@@ -193,3 +193,10 @@ class UserClass(MType):
         self.identifier = identifier
         self.member_types = member_types
 
+class BuiltInClass(MType):
+
+    _fields = []
+
+    def __init__(self, class_name):
+        super().__init__()
+        self.class_name = class_name
