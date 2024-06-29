@@ -103,7 +103,7 @@ def analysis(source, exe=None, verbose=False, expected_stdout=None, compile=True
 
     if compile:
 
-        template_path = "C:\\Users\\Will\\Documents\\GitHub\\mylang_template"
+        template_path = "E:\\Software Projects\\IntelliJ\\mylang_template"
 
         cwd = os.getcwd()
 

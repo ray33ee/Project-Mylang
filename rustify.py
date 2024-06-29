@@ -181,6 +181,14 @@ class _Rustify(ast.NodeVisitor):
         self.heap_wrapper(mangle.mangle(node))
         #self.write(mangle.mangle(node))
 
+
+    def visit_BuiltInClass(self, node):
+        self.write("crate::heap::CellGc<crate::classes::")
+        self.write(node.class_name)
+        self.write("::")
+        self.write(node.class_name)
+        self.write(">")
+
     def visit_Module(self, node):
         self.traverse(node.functions)
         self.traverse(node.classes)
@@ -316,7 +324,7 @@ class _Rustify(ast.NodeVisitor):
 
     def visit_For(self, node):
         self.fill()
-        self.write("for ")
+        self.write("for mut ")
         self.traverse(node.target)
         self.write(" in crate::heap::mut_ref_gc(&")
         self.traverse(node.iterator)
@@ -393,7 +401,6 @@ class _Rustify(ast.NodeVisitor):
         self.comma_separated(node.args)
 
     def visit_BuiltInMemberFunction(self, node):
-        print(ast.dump(node))
         self.traverse(node.expr)
         self.write(".")
         self.write_mangled(node)

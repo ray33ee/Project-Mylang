@@ -176,6 +176,9 @@ class _Mangle:
     def visit_UserClass(self, node):
         self.generic_class(node.identifier, node.member_types)
 
+    def visit_BuiltInClass(self, node):
+        self.generic_class(node.class_name, [])
+
     def visit_FunctionCall(self, node):
         self.generic_function(node.id, node.types)
 

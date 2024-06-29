@@ -335,13 +335,36 @@ def main():
 
     ("""
     
+class ListWrapper:
+    def __init__(l):
+        self.l = l
+    
+    def __get_l__():
+        return self.l
+    
+    def __hash__(hasher):
+        for item in ContainerIterator(self.l):
+            hash(item, hasher)
+        
+    
+    
 def main():
     h = Hasher()
     
-    hash(100, h)
-    hash(44, h)
+    h.write(100)
+    h.write(4.5)
+    h.write("hello world!")
+    h.write(byte_array())
     
     print(h.finalise())
+    
+    t = Hasher()
+    
+    l = ListWrapper([1, 2, 3, 4])
+    
+    hash(l, t)
+    
+    print(t.finalise())
     
     """, None)
 

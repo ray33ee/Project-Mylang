@@ -220,9 +220,7 @@ class _Translator(ast.NodeVisitor):
         else:
             exp = self.traverse(node.exp)
 
-        print(type(node.exp_type))
-
-        if type(node.exp_type) is m_types.UserClass:
+        if type(node.exp_type) is m_types.UserClass or type(node.exp_type) is m_types.BuiltInClass:
             return ir.UserClassMemberFunction(exp, node.id, self.traverse(node.args), node.types)
         else:
 

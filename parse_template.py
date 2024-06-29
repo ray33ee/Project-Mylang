@@ -134,13 +134,14 @@ class Parser:
 
     def parse_signature(self, signature):
 
-        regex = "pubfn_ZF(?:[0-9]+)N(?:[0-9]+)(?P<name>[_0-9a-zA-z]+)E[_0-9a-zA-z]*\\(&(?:mut)?self(?P<args>(?:,[_0-9a-zA-z]+:[_0-9a-zA-z]+)*)\\)(?:->(?P<ret>[_0-9a-zA-z]+))?"
+        regex = "pubfn_ZF(?P<total_length>[0-9]+)N(?P<id_length>[0-9]+)(?P<name>[_0-9a-zA-z]+)E[^(]*\(&(?:mut)?self(?P<args>(?:,[_0-9a-zA-z]+:[^,)]+)*)\)(?:->(?P<ret>[_0-9a-zA-z]+))?"
 
         m = re.search(regex, signature)
 
         if m is not None:
 
-            name = m.group("name")
+            name_length = int(m.group("id_length"))
+            name = m.group("name")[:name_length]
             arg_types = self.parse_args(m.group("args"))
             if m.group("ret") is None:
                 ret_type = m_types.Ntuple([])
@@ -153,13 +154,20 @@ class Parser:
         return name, arg_types, ret_type
 
     def parse_args(self, arg_string):
-        regex = ",[_0-9a-zA-z]+:(?P<type>[_0-9a-zA-z]+)"
+
+        regex = ",[_0-9a-zA-z]+:(?P<type>[^,)]+)"
 
         return [self.parse_type(m.group("type"), False) for m in re.finditer(regex, arg_string)]
 
     def parse_type(self, t, type_of=True):
 
-        if t == "Integer":
+        regex = "Cell[GR]c<crate::classes::[a-zA-Z]+::(?P<class_name>[a-zA-Z]+)>"
+
+        m = re.search(regex, t)
+
+        if m is not None:
+            r = m_types.BuiltInClass(m.group("class_name"))
+        elif t == "Integer":
             r = m_types.Integer()
         elif t == "Float":
             r = m_types.Floating()
@@ -180,12 +188,12 @@ class Parser:
         elif t == "Bytes":
             r = m_types.Bytes()
         elif t == "Hasher":
-            r = "Hasher"
+            r = m_types.BuiltInClass("Hasher")
         else:
             logger.error(f"Not implemented for {t}")
             raise NotImplemented()
 
-        if type_of and type(r) is not str:
+        if type_of and type(r) is not str and type(r) is not m_types.BuiltInClass:
             return type(r)
         else:
             return r
@@ -237,7 +245,7 @@ class Parser:
     def __contains__(self, item):
         return item in self.map
 
-PATH = "C:/Users/Will/Documents/GitHub/mylang_template/src"
+PATH = "E:\\Software Projects\\IntelliJ\\mylang_template\\src"
 
 bim = Parser(PATH + "/built_ins")
 

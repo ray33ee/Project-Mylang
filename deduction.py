@@ -438,9 +438,9 @@ class _Deduction(ast.NodeVisitor):
         if node.id in self.built_in_functions:
             return self.built_in_functions[node.id]
 
-        print(ast.dump(node))
+        print(node.id)
 
-        if node.id in parse_template.built_in_classes:
+        if m_types.BuiltInClass(node.id) in parse_template.built_in_classes:
             arg_types = self.traverse(node.args)
 
             self.working_tree_node.subs[node] = custom_nodes.BuiltInClassConstructor(node.id, node.args, arg_types)
@@ -550,8 +550,6 @@ class _Deduction(ast.NodeVisitor):
         # Get an ordered list of the argument types for the function call
         arg_types = self.traverse(node.args)
 
-        print(type(ex_type))
-
         if type(ex_type) is m_types.UserClass:
 
             class_name = ex_type.identifier
@@ -574,6 +572,14 @@ class _Deduction(ast.NodeVisitor):
             self.working_tree_node = parent
 
             return ret_type
+        elif type(ex_type) is m_types.BuiltInClass:
+
+            b = parse_template.built_in_classes.get_item(ex_type, node.id, arg_types)
+
+            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
+                                                                            arg_types, ex_type)
+
+            return b
         else:
 
             return self.handle_builtin(node, ex_type, arg_types)

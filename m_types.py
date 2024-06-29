@@ -200,3 +200,12 @@ class BuiltInClass(MType):
     def __init__(self, class_name):
         super().__init__()
         self.class_name = class_name
+
+    def __hash__(self):
+        return hash(hash("built_in_class") ^ hash(self.class_name))
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.class_name == other.class_name
+
+    def __repr__(self):
+        return f"BuiltInClass({repr(self.class_name)})"
