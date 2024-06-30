@@ -57,7 +57,7 @@ class Class:
         self.member_variables = member_variables
 
         for statement in node.body:
-            if type(statement) is ast.FunctionDef or type(statement) is custom_nodes.InitFunctionDef:
+            if type(statement) is ast.FunctionDef or type(statement) is custom_nodes.InitFunctionDef or type(statement) is custom_nodes.DelFunctionDef:
                 self.functions.append(Function(statement))
             else:
                 raise "Classes can only contain function definitions"

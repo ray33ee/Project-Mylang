@@ -27,6 +27,15 @@ class _Sugar(ast.NodeTransformer):
                     return True
         return False
 
+
+    # Returns true if the function in self.working_function represents a class constructor
+    def function_is_class_del(self):
+        if self.working_class:
+            if self.working_function:
+                if self.working_function.name == "__del__":
+                    return True
+        return False
+
     # Returns true if the function in self.working_function represents a class getter or setter of the variable named
     # 'identifier'. If identifier is None, then the function return true if the function is any getter or setter
     def function_is_getter_or_setter(self, identifier=None):
@@ -152,10 +161,13 @@ class _Sugar(ast.NodeTransformer):
     def visit_FunctionDef(self, node):
         self.working_function = node
 
-        if not self.function_is_class_init():
-            f = ast.FunctionDef(node.name, self.traverse(node.args), self.flatten(self.traverse(node.body)), node.decorator_list, node.returns, node.type_comment, node.type_params)
-        else:
+        if self.function_is_class_init():
             f = custom_nodes.InitFunctionDef(self.traverse(node.args), self.flatten(self.traverse(node.body)), node.decorator_list, node.returns, node.type_comment, node.type_params)
+        elif self.function_is_class_del():
+            f = custom_nodes.DelFunctionDef(self.flatten(self.traverse(node.body)), node.decorator_list, node.returns, node.type_comment, node.type_params)
+        else:
+            f = ast.FunctionDef(node.name, self.traverse(node.args), self.flatten(self.traverse(node.body)), node.decorator_list, node.returns, node.type_comment, node.type_params)
+
 
         ast.fix_missing_locations(f)
 

@@ -25,6 +25,7 @@ class _Rustify(ast.NodeVisitor):
         self.indent = 0
         self.in_class = False
         self.next_function = None
+        self.del_function = None
 
     def write(self, text):
         if type(text) is str:
@@ -224,6 +225,21 @@ class _Rustify(ast.NodeVisitor):
         crate::heap::mut_ref_gc(&self._ZF11N8__next__E().s).clone()
     }
                 """)
+            self.next_function = None
+
+        if self.del_function is not None:
+            self.fill()
+            self.write("impl std::ops::Drop for ")
+            self.write_mangled(node)
+            with self.block():
+                self.write("""
+    fn drop(&mut self) {
+        self._ZF10N7__del__E()
+    }
+                            """)
+            self.del_function = None
+
+
 
 
     def generic_function(self, node, is_main=False, prepend="", members=None):
@@ -237,9 +253,9 @@ class _Rustify(ast.NodeVisitor):
 
         self.comma_separated(node.args, prepend=prepend)
 
-        if node.ret_type != m_types.Ntuple([]) or members:  # If the return type is not unit type, (), display it
+        if node.ret_type != m_types.Ntuple([]) or members is not None:  # If the return type is not unit type, (), display it
             self.write(" -> ")
-            if members:
+            if members is not None:
                 self.heap_wrapper("Self")
             else:
                 self.traverse(node.ret_type)
@@ -247,7 +263,7 @@ class _Rustify(ast.NodeVisitor):
         with self.block():
             self.traverse(node.body)
 
-            if members:
+            if members is not None:
                 self.fill()
                 with self.new_heap():
                     self.write("Self ")
@@ -278,6 +294,14 @@ class _Rustify(ast.NodeVisitor):
     def visit_NextFunctionDef(self, node):
         self.visit_MemberFunctionDef(node)
         self.next_function = node.ret_type.contained_type
+
+    def visit_HashFunctionDef(self, node):
+        self.visit_MemberFunctionDef(node)
+        #self.hash_function = True
+
+    def visit_DelFunctionDef(self, node):
+        self.visit_MemberFunctionDef(node)
+        self.del_function = True
 
     def visit_InitFunctionDef(self, node):
         self.generic_function(node, members=node.member_list)

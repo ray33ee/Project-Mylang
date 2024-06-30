@@ -335,7 +335,7 @@ def main():
 
     ("""
     
-class ListWrapper:
+class HashableList:
     def __init__(l):
         self.l = l
     
@@ -346,7 +346,10 @@ class ListWrapper:
         for item in ContainerIterator(self.l):
             hash(item, hasher)
         
-    
+def hash_once(x):
+    h = Hasher()
+    hash(x, h)
+    return h.finalise()
     
 def main():
     h = Hasher()
@@ -358,15 +361,27 @@ def main():
     
     print(h.finalise())
     
-    t = Hasher()
+    print(hash_once(HashableList([1, 2, 3, 4])))
     
-    l = ListWrapper([1, 2, 3, 4])
+    print(hash_once(HashableList([2, 1, 3, 4])))
     
-    hash(l, t)
+    """, b'7914880691701137215\n-6601207110799817040\n2680182774450341777\n'),
+
+    ("""
+
+class Dropper:
+    def __init__():
+        print("Init")
+        
+    def __del__():
+        print("Dropped")
+
+def main():
+    d = Dropper()
     
-    print(t.finalise())
+    return 0
     
-    """, None)
+    """, b'Init\nDropped\n')
 
 
 

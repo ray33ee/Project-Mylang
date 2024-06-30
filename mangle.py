@@ -191,6 +191,12 @@ class _Mangle:
     def visit_UserClassMemberFunction(self, node):
         self.generic_function(node.id, node.types)
 
+    def visit_HashFunctionDef(self, node):
+        self.generic_functiondef(node)
+
+    def visit_DelFunctionDef(self, node):
+        self.generic_functiondef(node)
+
     def visit_SelfFunction(self, node):
         self.generic_function(node.id, node.types)
 

@@ -86,6 +86,12 @@ class Complex:
 		self.real = real
 		self.imag = imag
 
+	def __get_real__():
+		return self.real
+
+	def __get_imag__():
+		return self.imag
+
 	def __str__(self):
 		return f"{self.real} + {self.imag}i"
 

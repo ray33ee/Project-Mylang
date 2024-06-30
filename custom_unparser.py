@@ -26,6 +26,9 @@ class _Unparser(ast._Unparser):
     def visit_InitFunctionDef(self, node):
         self.visit_FunctionDef(node)
 
+    def visit_DelFunctionDef(self, node):
+        self.visit_FunctionDef(node)
+
     def visit_Integer(self, node):
         self.write("int")
 

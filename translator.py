@@ -95,8 +95,6 @@ class _Translator(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node):
 
-
-
         # Create a new IR entry
         ir_function = ir.FunctionDef(self.working_tree.function_name, self.working_tree.arg_map)
         ir_function.set_return_type(self.working_tree.ret_type.get_type())
@@ -110,8 +108,14 @@ class _Translator(ast.NodeVisitor):
             # Member function
             usr = self.working_tree.parent_class_type
 
+
+
             if ir_function.name == "__next__":
                 de = ir.NextFunctionDef(ir_function)
+            elif ir_function.name == "__hash__":
+                de = ir.HashFunctionDef(ir_function)
+            elif ir_function.name == "__del__":
+                de = ir.DelFunctionDef(ir_function)
             else:
                 de = ir.MemberFunctionDef(ir_function)
 
@@ -122,6 +126,9 @@ class _Translator(ast.NodeVisitor):
                 self.module.add_function(ir.MainFunctionDef(ir_function))
             else:
                 self.module.add_function(ir_function)
+
+    def visit_DelFunctionDef(self, node):
+        self.visit_FunctionDef(node)
 
     def visit_InitFunctionDef(self, node):
 

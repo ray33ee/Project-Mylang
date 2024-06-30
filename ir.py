@@ -328,6 +328,18 @@ class NextFunctionDef(MemberFunctionDef):
         super().__init__(ir_func)
 
 
+class HashFunctionDef(MemberFunctionDef):
+
+    def __init__(self, ir_func: FunctionDef):
+        super().__init__(ir_func)
+
+
+class DelFunctionDef(MemberFunctionDef):
+
+    def __init__(self, ir_func: FunctionDef):
+        super().__init__(ir_func)
+
+
 
 class InitFunctionDef(FunctionDef):
     def __init__(self, name, args, member_list):

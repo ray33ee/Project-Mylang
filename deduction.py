@@ -424,6 +424,26 @@ class _Deduction(ast.NodeVisitor):
                 parent = self.working_tree_node.parent
                 self.working_tree_node = parent
 
+
+
+                # If the class has a __del__ implementation, we need to implement this
+                if "__del__" in class_entry:
+
+
+                    function_table_del = self.match_function([], class_entry["__del__"])
+
+                    print(function_table_del)
+
+                    tt = TypeTree("__del__", [], function_table_del.ast_node, self.working_tree_node, usr_class, class_entry.node)
+                    self.working_tree_node.child_trees.append(tt)
+                    self.working_tree_node = tt
+
+                    # Traverse the FunctionDef
+                    self.traverse(function_table_del.ast_node)
+
+                    parent = self.working_tree_node.parent
+                    self.working_tree_node = parent
+
                 return usr_class
 
         else:
