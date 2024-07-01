@@ -566,11 +566,19 @@ class _Deduction(ast.NodeVisitor):
 
 
     def visit_MemberFunction(self, node):
+
+
+
         ex_type = self.traverse(node.exp)
         # Get an ordered list of the argument types for the function call
         arg_types = self.traverse(node.args)
 
         if type(ex_type) is m_types.UserClass:
+
+            if node.id == "__id__":
+                self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
+                                                                                       arg_types, ex_type)
+                return m_types.ID()
 
             class_name = ex_type.identifier
             class_table = self.whole_table[class_name]

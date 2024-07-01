@@ -11,10 +11,14 @@ class MemberVariable:
 
 def mangle(obj):
 
+    # Following segment allows us to prevent mangling in certain special cases (main function for example)
     if hasattr(obj, "to_mangle"):
         if obj.to_mangle is not None:
             if not obj.to_mangle:
-                return obj.id
+                if hasattr(obj, "id"):
+                    return obj.id
+                elif hasattr(obj, "name"):
+                    return obj.name
 
     m = _Mangle()
     m.visit(obj)
@@ -207,7 +211,7 @@ class _Mangle:
         self.generic_functiondef(node)
 
     def visit_MainFunctionDef(self, node):
-        self.generic_functiondef(node)
+        self.write("main")
 
     def visit_MemberFunctionDef(self, node):
         self.generic_functiondef(node)

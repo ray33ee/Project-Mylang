@@ -17,7 +17,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def analysis(source, exe=None, verbose=False, expected_stdout=None, compile=True):
+def analysis(source, exe=None, verbose=False, verifier=None, compile=True):
 
     # prepend the source with mylang's std:
     with open("./docs/mylang_std") as fh:
@@ -149,13 +149,17 @@ def analysis(source, exe=None, verbose=False, expected_stdout=None, compile=True
                     logger.warning("A non-zero return code implies an error occurred in the test. Stderr says:")
                     logger.warning(str(r.stderr))
 
-                if expected_stdout is not None:
-                    if r.stdout != expected_stdout:
-                        logger.warning("Expected output does not match actual output for test")
-                        logger.info("Expected output: " + repr(expected_stdout))
-                        logger.info("Actual output: " + repr(r.stdout))
-                        assert r.stdout == expected_stdout
-                        logger.info("Stdout test passed.")
+                if verifier is not None:
+                    if type(verifier) is bytes:
+                        if r.stdout != verifier:
+                            logger.warning("Expected output does not match actual output for test")
+                            logger.info("Expected output: " + repr(verifier))
+                            logger.info("Actual output: " + repr(r.stdout))
+                            assert r.stdout == verifier
+                            logger.info("Stdout test passed.")
+                    else:
+                        verifier(r.stdout.decode('utf-8').split("\n"))
+                        logger.info("Verifier success")
 
 
             finally:

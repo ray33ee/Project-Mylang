@@ -53,6 +53,20 @@ class _Rustify(ast.NodeVisitor):
 
 
     @contextmanager
+    def brace(self):
+        self.write("(")
+        yield
+        self.write(")")
+
+
+    @contextmanager
+    def fish(self):
+        self.write("<")
+        yield
+        self.write(">")
+
+
+    @contextmanager
     def delimit(self, start, end):
         self.write(start)
         yield
@@ -98,24 +112,41 @@ class _Rustify(ast.NodeVisitor):
                     comma = True
                 self.traverse(n)
 
-    def heap_wrapper(self, identifier):
-        self.write("heap::CellGc<")
-        self.write(identifier)
+    @contextmanager
+    def heap_wrapper(self):
+        self.write("crate::heap::CellGc<")
+        yield
         self.write(">")
-
 
     @contextmanager
     def new_heap(self):
 
-        self.write("heap::new_gc(")
+        self.write("crate::heap::new_gc(")
         yield
         self.write(")")
 
     @contextmanager
     def access_heap(self):
-        self.write("heap::mut_ref_gc(&")
+        self.write("crate::heap::mut_ref_gc(&")
         yield
         self.write(")")
+
+    def filthy_cast(self):
+        self.write("crate::heap::filthy_cast_to_gc(&self)")
+
+    def type_scope(self, t):
+        self.write("crate::built_ins::")
+        self.write(t)
+        self.write("::")
+        self.write(t)
+
+    def implement_id_function(self):
+        self.fill()
+        self.write("""
+    fn _ZF9N6__id__E(& mut self) -> crate::built_ins::ID::ID {
+        return crate::built_ins::ID::ID::new(crate::heap::ref_id(self));
+    }
+        """)
 
 
     def visit_Unknown(self, node):
@@ -136,33 +167,33 @@ class _Rustify(ast.NodeVisitor):
         self.traverse(node.annotation)
 
     def visit_Boolean(self, node):
-        self.write("built_ins::Bool::Bool")
+        self.type_scope("Bool")
 
     def visit_Integer(self, node):
-        self.write("built_ins::Integer::Integer")
+        self.type_scope("Integer")
 
     def visit_Floating(self, node):
-        return self.write("built_ins::Float::Float")
+        self.type_scope("Float")
 
     def visit_Char(self, node):
         raise NotImplemented()
 
     def visit_ID(self, node):
-        self.write("usize")
+        self.type_scope("ID")
 
     def visit_Ntuple(self, node):
         self.comma_separated(node.tuple_types)
 
     def visit_Vector(self, node):
-        self.write("built_ins::List::List<")
-        self.traverse(node.element_type)
-        self.write(">")
+        self.type_scope("List")
+        with self.fish():
+            self.traverse(node.element_type)
 
     def visit_String(self, node):
-        self.write("built_ins::String::String")
+        self.type_scope("String")
 
     def visit_Bytes(self, node):
-        self.write("built_ins::Bytes::Bytes")
+        self.type_scope("Bytes")
 
     def visit_Dictionary(self, node):
         raise NotImplemented()
@@ -171,24 +202,28 @@ class _Rustify(ast.NodeVisitor):
         raise NotImplemented()
 
     def visit_Option(self, node):
-        self.write("crate::built_ins::Option::Option")
-        self.comma_separated([node.contained_type], "<", ">")
+        self.type_scope("Option")
+        with self.fish():
+            self.traverse(node.contained_type)
 
     def visit_Result(self, node):
         self.write("Result")
         self.comma_separated([node.ok_type, node.err_type], "<", ">")
 
     def visit_UserClass(self, node):
-        self.heap_wrapper(mangle.mangle(node))
+        with self.heap_wrapper():
+            self.write(mangle.mangle(node))
         #self.write(mangle.mangle(node))
 
 
     def visit_BuiltInClass(self, node):
-        self.write("crate::heap::CellGc<crate::classes::")
-        self.write(node.class_name)
-        self.write("::")
-        self.write(node.class_name)
-        self.write(">")
+
+        with self.heap_wrapper():
+            self.write("crate::classes::")
+            self.write(node.class_name)
+            self.write("::")
+            self.write(node.class_name)
+
 
     def visit_Module(self, node):
         self.traverse(node.functions)
@@ -211,6 +246,8 @@ class _Rustify(ast.NodeVisitor):
         with self.block():
             with self.class_block():
                 self.traverse(node.functions)
+
+            self.implement_id_function()
 
         if self.next_function is not None:
             self.fill()
@@ -246,17 +283,15 @@ class _Rustify(ast.NodeVisitor):
         self.fill()
         self.write("fn ")
 
-        if is_main:
-            self.write("main")
-        else:
-            self.write_mangled(node)
+        self.write_mangled(node)
 
         self.comma_separated(node.args, prepend=prepend)
 
         if node.ret_type != m_types.Ntuple([]) or members is not None:  # If the return type is not unit type, (), display it
             self.write(" -> ")
             if members is not None:
-                self.heap_wrapper("Self")
+                with self.heap_wrapper():
+                    self.write("Self")
             else:
                 self.traverse(node.ret_type)
 
@@ -350,17 +385,24 @@ class _Rustify(ast.NodeVisitor):
         self.fill()
         self.write("for mut ")
         self.traverse(node.target)
-        self.write(" in crate::heap::mut_ref_gc(&")
-        self.traverse(node.iterator)
-        self.write(")")
+
+        self.write(" in ")
+
+        with self.access_heap():
+            self.traverse(node.iterator)
+
         with self.block():
             self.traverse(node.body)
+
+    # Used to convert a mylang boolean into a rust bool
+    def boolean_conversion(self):
+        self.write(".get_bool()")
 
     def visit_While(self, node):
         self.fill()
         self.write("while ")
         self.traverse(node.condition)
-        self.write(".get_bool()")
+        self.boolean_conversion()
         with self.block():
             self.traverse(node.body)
 
@@ -368,7 +410,7 @@ class _Rustify(ast.NodeVisitor):
         self.fill()
         self.write("if ")
         self.traverse(node.condition)
-        self.write(".get_bool()")
+        self.boolean_conversion()
         with self.block():
             self.traverse(node.if_block)
         if len(node.else_block) > 0:
@@ -432,21 +474,33 @@ class _Rustify(ast.NodeVisitor):
 
     def visit_Constant(self, node):
         if type(node.value) is str:
-            self.write(f'crate::built_ins::String::String::new(std::string::String::from("{str(node.value)}"))')
+            self.type_scope("String")
+            self.write("::new")
+            with self.brace():
+                self.write("std::string::String::from")
+                with self.brace():
+                    with self.delimit('"', '"'):
+                        self.write(node.value)
         elif type(node.value) is bool:
-            self.write("built_ins::Bool::Bool::new(")
-            self.write(str(node.value).lower())
-            self.write(")")
+            self.type_scope("Bool")
+            self.write("::new")
+            with self.brace():
+                self.write(str(node.value).lower())
         elif type(node.value) is int:
-            self.write("built_ins::Integer::Integer::new(")
-            self.write(str(node.value))
-            self.write(")")
+            self.type_scope("Integer")
+            self.write("::new")
+            with self.brace():
+                self.write(str(node.value))
         elif type(node.value) is float:
-            self.write("built_ins::Float::Float::new(")
-            self.write(str(node.value))
-            self.write(")")
+            self.type_scope("Float")
+            self.write("::new")
+            with self.brace():
+                self.write(str(node.value))
         elif node.value is None:
-            self.write("crate::built_ins::Option::Option::new(std::option::Option::None)")
+            self.type_scope("Option")
+            self.write("::new")
+            with self.brace():
+                self.write("std::option::Option::None")
         else:
             self.write(str(node.value))
 
@@ -454,12 +508,14 @@ class _Rustify(ast.NodeVisitor):
         self.comma_separated(node.elements)
 
     def visit_List(self, node):
-        self.write("built_ins::List::List::new(vec!")
-        self.comma_separated(node.elements, start='[', end=']')
-        self.write(")")
+        self.type_scope("List")
+        self.write("::new")
+        with self.brace():
+            self.write("vec!")
+            self.comma_separated(node.elements, start='[', end=']')
 
     def visit_SolitarySelf(self, node):
-        self.write("heap::filthy_cast_to_gc(&self)")
+        self.filthy_cast()
 
     def visit_GlobalFunctionCall(self, node):
         self.write_mangled(node)

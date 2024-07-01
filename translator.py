@@ -166,6 +166,14 @@ class _Translator(ast.NodeVisitor):
 
         return ir.LetAssign(target, self.traverse(node.value))
 
+    def visit_Reassign(self, node):
+        if type(node.target) is ast.Name:
+            target = ir.Identifier(node.target.id)
+        else:
+            target = self.traverse(node.target)
+
+        return ir.Reassign(target, self.traverse(node.value))
+
     def visit_GetterAssign(self, node):
         return ir.Reassign(ir.SelfVariable(node.self_id, False), self.traverse(node.value))
 

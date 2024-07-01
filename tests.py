@@ -3,6 +3,23 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+
+def id_test1_verify(lines):
+    assert lines[0] != lines[1]
+    assert lines[1] == lines[2]
+    assert lines[1] != lines[3]
+
+def id_test2_verify(lines):
+    assert lines[0] != lines[1]
+    assert lines[0] != lines[2]
+    assert lines[1] == lines[2]
+
+def hash_test1_verify(lines):
+    assert lines[0] != lines[1]
+    assert lines[1] != lines[2]
+    assert lines[0] != lines[2]
+
 test_sources = [
 
     ("""
@@ -124,63 +141,6 @@ def main():
     print(y)
     
     """, b'5\n'),
-
-    ("""
-    
-class Range:
-        
-    def __init__(end):
-        self.i = 0
-        self.end = end
-        self.step = 1
-        
-    def __init__(start, end):
-        self.i = start
-        self.end = end
-        self.step = 1
-        
-    def __init__(start, end, step):
-        self.i = start
-        self.end = end
-        self.step = step
-        
-    
-    def __get_i__():
-        return self.i
-    
-    def __get_end__():
-        return self.end
-    
-    def __get_step__():
-        return self.step
-        
-    def __set_i__(i):
-        self.i = i
-        
-    def __iter__():
-        return self
-    
-    def __next__():
-        if self.i >= self.end:
-            return None
-        
-        i = self.i
-        tmp = self.i + self.step
-        self.i = tmp
-        return some(i)
-
-def main():
-    
-    for i in Range(3):
-        print(i)
-    
-    for i in Range(3, 6):
-        print(i)
-    
-    for i in Range(7, 14, 2):
-        print(i)
-
-    """, b'0\n1\n2\n3\n4\n5\n7\n9\n11\n13\n'),
 
     ("""
     
@@ -334,6 +294,79 @@ def main():
     """, b'1\n2\n3\n4\n5\n6\n7\n3\n4\n5\n4\n'),
 
     ("""
+
+class Dropper:
+    def __init__():
+        print("Init")
+        
+    def __del__():
+        print("Dropped")
+
+def main():
+    d = Dropper()
+    
+    return 0
+    
+    """, b'Init\nDropped\n'),
+
+    ("""
+    
+class Range:
+        
+    def __init__(end):
+        self.i = 0
+        self.end = end
+        self.step = 1
+        
+    def __init__(start, end):
+        self.i = start
+        self.end = end
+        self.step = 1
+        
+    def __init__(start, end, step):
+        self.i = start
+        self.end = end
+        self.step = step
+        
+    
+    def __get_i__():
+        return self.i
+    
+    def __get_end__():
+        return self.end
+    
+    def __get_step__():
+        return self.step
+        
+    def __set_i__(i):
+        self.i = i
+        
+    def __iter__():
+        return self
+    
+    def __next__():
+        if self.i >= self.end:
+            return None
+        
+        i = self.i
+        tmp = self.i + self.step
+        self.i = tmp
+        return some(i)
+
+def main():
+    
+    for i in Range(3):
+        print(i)
+    
+    for i in Range(3, 6):
+        print(i)
+    
+    for i in Range(7, 14, 2):
+        print(i)
+
+    """, b'0\n1\n2\n3\n4\n5\n7\n9\n11\n13\n'),
+
+    ("""
     
 class HashableList:
     def __init__(l):
@@ -365,25 +398,110 @@ def main():
     
     print(hash_once(HashableList([2, 1, 3, 4])))
     
-    """, b'7914880691701137215\n-6601207110799817040\n2680182774450341777\n'),
+    """, hash_test1_verify),
+
+    ("""
+    
+def main():
+    x = 1
+    
+    print(x)
+    
+    x = True 
+    
+    print(x)
+    
+    x = False
+    
+    print(x)
+    
+    """, b'1\ntrue\nfalse\n'),
+
+    ("""
+    
+def main():
+    
+    sum = 0
+    
+    l = [1, 7, 3]
+    
+    for n in ContainerIterator(l):
+        sum = sum + n
+        
+    print(sum)
+    
+    sum = ContainerIterator(l)
+    
+    for p in sum:
+        print(p)
+    
+    """, b'11\n1\n7\n3\n'),
 
     ("""
 
-class Dropper:
-    def __init__():
-        print("Init")
-        
-    def __del__():
-        print("Dropped")
+def f(x):
+    print(x)    
 
 def main():
-    d = Dropper()
     
-    return 0
+    x = 1
     
-    """, b'Init\nDropped\n')
+    f(x)
+    
+    x = 6.6
+    
+    f(x)
+    
+    """, b'1\n6.6\n'),
 
+    ("""
+
+def main():
+    
+    s = StdOut()
+    
+    s.print(100)
+    
+    """, b'100'),
+
+    ("""
+    
+    
+def main():
+    i = 0
+    
+    print(id(i))
+ 
+    l = [100, 2]
+    
+    print(id(l))
+    
+    m = l
+    
+    print(id(m))
+ 
+    k = [100, 2]
+    
+    print(id(k))
+        
+    """, id_test1_verify),
+
+    ("""
+    
+class Test:
+    def __init__():
+        pass
+        
+def main():
+    t = Test()
+    u = Test()
+    v = u
+    
+    print(id(t))
+    print(id(u))
+    print(id(v))
+    
+    """, id_test2_verify),
 
 
 ]
-

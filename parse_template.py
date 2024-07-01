@@ -169,6 +169,8 @@ class Parser:
             r = m_types.BuiltInClass(m.group("class_name"))
         elif t == "Integer":
             r = m_types.Integer()
+        elif t == "ID":
+            r = m_types.ID()
         elif t == "Float":
             r = m_types.Floating()
         elif t == "Bool":
@@ -189,7 +191,10 @@ class Parser:
             r = m_types.Bytes()
         elif t == "Hasher":
             r = m_types.BuiltInClass("Hasher")
+        elif t == "StdOut":
+            r = m_types.BuiltInClass("StdOut")
         else:
+            print(f"Not implemented for {t}")
             logger.error(f"Not implemented for {t}")
             raise NotImplemented()
 

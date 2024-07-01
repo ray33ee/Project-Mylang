@@ -306,6 +306,7 @@ class MainFunctionDef(FunctionDef):
         super().__init__("main", [])
         self.body = ir_func.body
         self.ret_type = ir_func.ret_type
+        self.to_mangle = False
 
 
 class MemberFunctionDef(FunctionDef):
@@ -326,6 +327,7 @@ class NextFunctionDef(MemberFunctionDef):
 
     def __init__(self, ir_func: FunctionDef):
         super().__init__(ir_func)
+
 
 
 class HashFunctionDef(MemberFunctionDef):
