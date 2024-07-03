@@ -20,7 +20,9 @@ class MType(ast.AST):
 
 # Convenience function. Used when the type is not immediately know, for example when declaring an empty array the
 # type would be Vector(Unknown)
-class Unknown:
+class Unknown(MType):
+
+    _fields = []
 
     class Dependant:
         def __init__(self, unknown, node, arg_types):

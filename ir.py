@@ -351,11 +351,13 @@ class InitFunctionDef(FunctionDef):
 
 class ClassDef(ast.AST):
 
-    _fields = ["name", "member_map", "functions"]
+    _fields = ["name", "member_map", "functions", "mutable"]
 
     def __init__(self, name, member_map):
         super().__init__()
         self.name = name
+
+        self.mutable = None
 
         # Must be an ordered dict mapping agr names to types
         self.member_map = member_map

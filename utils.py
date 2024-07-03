@@ -90,8 +90,11 @@ def analysis(source, exe=None, verbose=False, verifier=None, compile=True):
     logger.debug("Mutability")
     logger.debug("##################################")
 
-    print(mutability.fill_mutability(_ir, t))
-    raise 2
+    mutability.fill_mutability(_ir, t)
+
+    logger.debug("Mutability map:")
+    for c in _ir.classes:
+        logger.debug(f"    {c.name} {[ast.dump(x) for x in c.member_map]} -> {c.mutable}")
 
     logger.debug("##################################")
     logger.debug("Post processing")
