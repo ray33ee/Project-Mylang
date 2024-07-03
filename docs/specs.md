@@ -599,7 +599,7 @@ a) Small - Types that are only N machine words long, where N is a value to be de
 b) Simple - Stack member fields must all be stack types
 	i) Types that do not contain any references, i.e. cannot contain other heap values.
 	ii) Types that do not contain any OS handles
-c) Immutable - Cannot contain any function (other than `__init__` and [getters/setters](#properties)) that changes member variables.
+c) Immutable - Cannot contain any setters and any getters must themselves not contain setters, recursively
 
 ## 5.5 Drop <a name="drop"></a>
 

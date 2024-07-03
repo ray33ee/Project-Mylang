@@ -222,7 +222,7 @@ class _Mangle:
     def visit_InitFunctionDef(self, node):
         self.generic_functiondef(node)
 
-    def visit_CyclicClassDef(self, node):
+    def visit_ClassDef(self, node):
         self.generic_class(node.name, node.member_map)
 
     def visit_AcyclicClassDef(self, node):

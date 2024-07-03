@@ -6,6 +6,7 @@ import deduction
 import ir
 import m_types
 import mangle
+import parse_template
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ class _Translator(ast.NodeVisitor):
                 c = None
 
         # The following triple can be used to uniquely represent a function. We use this to avoid repeats
-        triple = self.working_tree.function_name, deduction._Deduction.HashableList(self.working_tree.arg_types), c
+        triple = self.working_tree.function_name, parse_template.Parser.HashableList(self.working_tree.arg_types), c
 
         if triple in self.function_set:
             return

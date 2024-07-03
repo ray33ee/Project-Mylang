@@ -490,8 +490,18 @@ def main():
     
 class Test:
     def __init__():
-        pass
         
+        self.x = 0
+    
+    def __get_x__():
+        return self.x
+    
+    def __set_x__(x):
+        self.x = x
+    
+    def do_something():
+        self.x = 100
+    
 def main():
     t = Test()
     u = Test()
@@ -500,6 +510,8 @@ def main():
     print(id(t))
     print(id(u))
     print(id(v))
+    
+    v.do_something()
     
     """, id_test2_verify),
 

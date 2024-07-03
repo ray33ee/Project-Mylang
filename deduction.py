@@ -1,4 +1,5 @@
 import ast
+from contextlib import contextmanager
 
 import custom_nodes
 import errors
@@ -13,7 +14,50 @@ logger = logging.getLogger(__name__)
 def deduce(table: symbol_table.Table):
     t = _Deduction(table)
     t.visit_FunctionDef(table.get_main().ast_node)
-    return t.working_tree_node
+    return t.manager.working_tree_node
+
+class TreeManager:
+
+    def __init__(self, table):
+        self.table = table
+        self.working_tree_node = TypeTree("main", [], table.get_main().ast_node, None, None, None)
+
+
+    @contextmanager
+    def new_child_tree(self, arg_types, ast_node, parent_class_type, parent_class_node):
+
+        tt = TypeTree(ast_node.name, arg_types, ast_node, self.working_tree_node, parent_class_type, parent_class_node)
+        self.working_tree_node.child_trees.append(tt)
+        self.working_tree_node = tt
+        yield
+        self.working_tree_node = self.working_tree_node.parent
+
+    def substitute_node(self, node, sub):
+        self.working_tree_node.subs[node] = sub
+
+    def is_node_in_symbolmap(self, node):
+        return node in self.working_tree_node.symbol_map
+
+    def get_map(self):
+        return self.working_tree_node.symbol_map
+
+    def get_symbol(self, node):
+        return self.working_tree_node.symbol_map[node]
+
+    def insert_symbol(self, node, symbol):
+        self.working_tree_node.symbol_map[node] = symbol
+
+    def get_ret_type(self):
+        return self.working_tree_node.ret_type
+
+    def set_ret_type(self, ret_type):
+        self.working_tree_node.ret_type = ret_type
+
+    def get_parent_class_type(self):
+        return self.working_tree_node.parent_class_type
+
+    def set_parent_class_type(self, class_type):
+        self.working_tree_node.parent_class_type = class_type
 
 
 
@@ -23,13 +67,12 @@ class TypeTree(ast.AST):
 
     def __init__(self, name, arg_types, ast_node, parent, parent_class_type, parent_class_node):
         # Todo: We don't need to pass 'name' as we can deduce this from ast_node.name
-        self.function_name = name
+        self.function_name = ast_node.name
         self.arg_types = arg_types
+
         self.arg_map = []
 
-
-
-        if parent_class_type and name != "__init__":
+        if parent_class_type and self.function_name != "__init__":
             member_types = parent_class_type.member_types
         else:
             member_types = []
@@ -37,6 +80,8 @@ class TypeTree(ast.AST):
         # Combine the argument map and the class member variable map into one
         self.symbol_map = {}
 
+        # Combine the arg name and type into an ir.Arg
+        # also add the arg into the symbol map
         for key, value in zip(ast_node.args.args, arg_types):
             self.arg_map.append(ir.Arg(key.arg, value))
             self.symbol_map[key.arg] = value
@@ -66,112 +111,6 @@ class TypeTree(ast.AST):
 # Translator walks the nodes and a) resolves types and b) converts code into IR
 class _Deduction(ast.NodeVisitor):
 
-    # Thin wrapper around lists that can be hashed
-    # Be careful not to externally mutate keys
-    class HashableList:
-
-        def __init__(self, iterable=[]):
-            self.l = list(iterable)
-
-        def __hash__(self):
-            h = 0
-
-            for item in self.l:
-                h ^= hash(item)
-
-            return h
-
-        def __eq__(self, other):
-            return self.l == other.l
-
-        def __repr__(self):
-            return f"HashableList({repr(self.l)})"
-
-    # Given a built-in type (expr), a function name (func) and a list of argument types (...) we can determine the
-    # return type of the function expr.func(...) using the following structure
-    built_in_returns = {
-        m_types.Boolean: {
-            "__bool__": { HashableList(): m_types.Boolean() },
-            "__float__": { HashableList(): m_types.Floating() },
-            "__int__": { HashableList(): m_types.Integer() },
-            "__index__": { HashableList(): m_types.ID() },
-            "__str__": { HashableList(): m_types.String() },
-            "__fmt__": { HashableList(): m_types.String() },
-            "__bytes__": { HashableList(): m_types.Bytes() },
-            "__len__": { HashableList(): m_types.ID() },
-
-            "__hash__": { HashableList(): m_types.Integer() },
-
-            "__real__": { HashableList(): m_types.Floating() },
-            "__imag__": { HashableList(): m_types.Floating() },
-
-            "__one__": { HashableList(): m_types.Boolean() },
-            "__zero__": { HashableList(): m_types.Boolean() },
-
-            "__push_fmt__": {HashableList([m_types.String(), m_types.Integer()]): m_types.Ntuple([])},
-        },
-
-        m_types.Floating: {
-            "__add__": { HashableList([m_types.Floating()]): m_types.Floating(), HashableList([m_types.Integer()]): m_types.Floating()},
-            "__real__": { HashableList(): m_types.Floating()  },
-            "__imag__": { HashableList(): m_types.Floating()  },
-
-            "__float__": {HashableList(): m_types.Floating()},
-
-            "__zero__": {HashableList(): m_types.Floating()},
-            "__one__": {HashableList(): m_types.Floating()},
-
-            "__str__": {HashableList(): m_types.String()},
-            "__push_fmt__": {HashableList([m_types.String(), m_types.Integer()]): m_types.Ntuple([])},
-        },
-
-        m_types.Integer: {
-            "__add__": { HashableList([m_types.Integer()]): m_types.Integer(), HashableList([m_types.Floating()]): m_types.Floating() },
-            "__mul__": { HashableList([m_types.Integer()]): m_types.Integer(), HashableList([m_types.Floating()]): m_types.Floating() },
-            "__sub__": {HashableList([m_types.Integer()]): m_types.Integer(),
-                        HashableList([m_types.Floating()]): m_types.Floating()},
-            "__mod__": {HashableList([m_types.Integer()]): m_types.Integer()},
-            "__floordiv__": {HashableList([m_types.Integer()]): m_types.Integer()},
-
-            "__real__": { HashableList(): m_types.Integer()  },
-            "__imag__": { HashableList(): m_types.Integer()  },
-
-            "__eq__": {HashableList([m_types.Integer()]): m_types.Boolean(),
-                       HashableList([m_types.Floating()]): m_types.Boolean()},
-            "__ne__": {HashableList([m_types.Integer()]): m_types.Boolean(),
-                       HashableList([m_types.Floating()]): m_types.Boolean()},
-            "__ge__": {HashableList([m_types.Integer()]): m_types.Boolean(), HashableList([m_types.Floating()]): m_types.Boolean()},
-            "__gt__": { HashableList([m_types.Integer()]): m_types.Boolean(), HashableList([m_types.Floating()]): m_types.Boolean() },
-            "__le__": {HashableList([m_types.Integer()]): m_types.Boolean(), HashableList([m_types.Floating()]): m_types.Boolean()},
-            "__lt__": { HashableList([m_types.Integer()]): m_types.Boolean(), HashableList([m_types.Floating()]): m_types.Boolean() },
-
-            "__float__": {HashableList(): m_types.Floating()},
-            "__int__": {HashableList(): m_types.Integer()},
-
-            "__next__": {HashableList(): m_types.Option(m_types.Integer())},
-
-            "__zero__": {HashableList(): m_types.Integer()},
-            "__one__": {HashableList(): m_types.Integer()},
-
-            "__push_fmt__": {HashableList([m_types.String(), m_types.Integer()]): m_types.Ntuple([])},
-        },
-
-        m_types.Vector: {
-            "__getitem__": {HashableList([m_types.Integer()]): "element_type"},
-
-            "__len__": {HashableList(): m_types.Integer()},
-        },
-
-        m_types.String: {
-            "__push_fmt__": {HashableList([m_types.String(), m_types.Integer()]): m_types.Ntuple([])},
-        },
-
-        m_types.Option: {
-            "is_none": {HashableList(): m_types.Boolean()},
-            "is_some": {HashableList(): m_types.Boolean()},
-            "unwrap": {HashableList(): "contained_type"},
-        },
-    }
 
     built_in_functions = {
         "print_string": m_types.Ntuple([]),
@@ -183,7 +122,7 @@ class _Deduction(ast.NodeVisitor):
 
         self.biumap = {}
 
-        self.working_tree_node = TypeTree("main", [], table.get_main().ast_node, None, None, None)
+        self.manager = TreeManager(table)
 
 
     # Assert that all the expressions in args are the same type, then return this type. Otherwise raise an exception
@@ -303,7 +242,7 @@ class _Deduction(ast.NodeVisitor):
             raise NotImplemented()
 
     def visit_Name(self, node):
-        return self.working_tree_node.symbol_map[node.id]
+        return self.manager.get_symbol(node.id)
 
 
     def visit_List(self, node):
@@ -325,9 +264,9 @@ class _Deduction(ast.NodeVisitor):
         # c) a constructor call
 
         # first we check for any local variables with the name
-        if node.id in self.working_tree_node.symbol_map:
+        if self.manager.is_node_in_symbolmap(node.id):
             # Add an entry to the substitution map
-            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(ast.Name(node.id), "__call__", node.args, self.traverse(node.args), self.working_tree_node.symbol_map[node.id])
+            self.manager.substitute_node(node, custom_nodes.MemberFunction(ast.Name(node.id), "__call__", node.args, self.traverse(node.args), self.manager.get_symbol(node.id)))
             # Treat the mycall 'identifier(...)' as a 'identifier.__call__(...)'
             return self.visit_MemberFunction(custom_nodes.MemberFunction(ast.Name(node.id), "__call__", node.args))
 
@@ -343,7 +282,7 @@ class _Deduction(ast.NodeVisitor):
 
                 a = arg_types[0]
 
-                self.working_tree_node.subs[node] = custom_nodes.SomeCall(node.args[0])
+                self.manager.substitute_node(node, custom_nodes.SomeCall(node.args[0]))
 
                 return m_types.Option(a)
 
@@ -352,7 +291,7 @@ class _Deduction(ast.NodeVisitor):
             if len(node.args) != 0:
                 raise "Bytes function takes no arguments"
 
-            self.working_tree_node.subs[node] = custom_nodes.BytesCall()
+            self.manager.substitute_node(node, custom_nodes.BytesCall())
 
             return m_types.Bytes()
 
@@ -373,18 +312,14 @@ class _Deduction(ast.NodeVisitor):
                     # Get the function table entry for the function being called
                     function_table = self.match_function(arg_types, table_entry)
 
-                    tt = TypeTree(node.id, arg_types, function_table.ast_node, self.working_tree_node, None, None)
-                    self.working_tree_node.child_trees.append(tt)
-                    self.working_tree_node = tt
+                    with self.manager.new_child_tree(arg_types, function_table.ast_node, None, None):
 
-                    # Traverse the FunctionDef
-                    self.traverse(function_table.ast_node)
+                        # Traverse the FunctionDef
+                        self.traverse(function_table.ast_node)
 
-                    self.working_tree_node.parent.subs[node] = custom_nodes.MyCall(node.id, node.args, arg_types)
+                        ret_type = self.manager.get_ret_type()
 
-                    ret_type = self.working_tree_node.ret_type
-                    parent = self.working_tree_node.parent
-                    self.working_tree_node = parent
+                    self.manager.substitute_node(node, custom_nodes.MyCall(node.id, node.args, arg_types))
 
                     return ret_type
             elif isinstance(self.whole_table[node.id], symbol_table.Class):
@@ -398,32 +333,26 @@ class _Deduction(ast.NodeVisitor):
                 # Get the function table entry for the __init__ function of the class being constructed
                 function_table = self.match_function(arg_types, class_entry["__init__"])
 
-                tt = TypeTree("__init__", arg_types, function_table.ast_node, self.working_tree_node, None, class_entry.node)
-                self.working_tree_node.child_trees.append(tt)
-                self.working_tree_node = tt
+                with self.manager.new_child_tree(arg_types, function_table.ast_node, None, class_entry.node):
 
-                # Traverse the FunctionDef
-                self.traverse(function_table.ast_node)
+                    # Traverse the FunctionDef
+                    self.traverse(function_table.ast_node)
 
-                m = self.working_tree_node.symbol_map
+                    m = self.manager.get_map()
 
-                member_var_types = []
+                    member_var_types = []
 
-                for mem in self.whole_table[node.id].member_variables:
-                    member_var_types.append(ir.Member("self." + mem.name, m["self." + mem.name]))
+                    for mem in self.whole_table[node.id].member_variables:
+                        member_var_types.append(ir.Member("self." + mem.name, m["self." + mem.name]))
 
-                usr_class = m_types.UserClass(node.id, member_var_types)
+                    usr_class = m_types.UserClass(node.id, member_var_types)
 
-                logger.debug("Arg types")
-                logger.debug(arg_types)
+                    logger.debug("Arg types")
+                    logger.debug(arg_types)
 
-                self.working_tree_node.parent.subs[node] = custom_nodes.ConstructorCall(usr_class, node.args, arg_types)
+                    self.manager.set_parent_class_type(usr_class)
 
-                self.working_tree_node.parent_class_type = usr_class
-
-                parent = self.working_tree_node.parent
-                self.working_tree_node = parent
-
+                self.manager.substitute_node(node, custom_nodes.ConstructorCall(usr_class, node.args, arg_types))
 
 
                 # If the class has a __del__ implementation, we need to implement this
@@ -434,15 +363,10 @@ class _Deduction(ast.NodeVisitor):
 
                     print(function_table_del)
 
-                    tt = TypeTree("__del__", [], function_table_del.ast_node, self.working_tree_node, usr_class, class_entry.node)
-                    self.working_tree_node.child_trees.append(tt)
-                    self.working_tree_node = tt
+                    with self.manager.new_child_tree([], function_table_del.ast_node, usr_class, class_entry.node):
+                        # Traverse the FunctionDef
+                        self.traverse(function_table_del.ast_node)
 
-                    # Traverse the FunctionDef
-                    self.traverse(function_table_del.ast_node)
-
-                    parent = self.working_tree_node.parent
-                    self.working_tree_node = parent
 
                 return usr_class
 
@@ -453,7 +377,8 @@ class _Deduction(ast.NodeVisitor):
             # Get an ordered list of the argument types for the function call
             arg_types = self.traverse(node.args)
 
-            self.working_tree_node.subs[node] = custom_nodes.MyCall(node.id, node.args, arg_types)
+            self.manager.substitute_node(node, custom_nodes.MyCall(node.id, node.args, arg_types))
+
 
         if node.id in self.built_in_functions:
             return self.built_in_functions[node.id]
@@ -463,7 +388,8 @@ class _Deduction(ast.NodeVisitor):
         if m_types.BuiltInClass(node.id) in parse_template.built_in_classes:
             arg_types = self.traverse(node.args)
 
-            self.working_tree_node.subs[node] = custom_nodes.BuiltInClassConstructor(node.id, node.args, arg_types)
+            self.manager.substitute_node(node, custom_nodes.BuiltInClassConstructor(node.id, node.args, arg_types))
+
             return m_types.BuiltInClass(node.id)
 
         logger.error(f"Could not resolve function call '{node.id}', Node: {ast.dump(node)}")
@@ -475,30 +401,24 @@ class _Deduction(ast.NodeVisitor):
         return m_types.String()
 
     def visit_SelfMemberVariable(self, node):
-        return self.working_tree_node.symbol_map["self." + node.id]
+        return self.manager.get_symbol("self." + node.id)
 
     def visit_SelfMemberFunction(self, node):
         # Get an ordered list of the argument types for the function call
         arg_types = self.traverse(node.args)
 
-        user_class = self.working_tree_node.parent_class_type
+        user_class = self.manager.get_parent_class_type()
 
         class_table = self.whole_table[user_class.identifier]
         function_table = self.match_function(arg_types, class_table[node.id])
 
-        tt = TypeTree(node.id, arg_types, function_table.ast_node, self.working_tree_node, user_class, class_table.node)
-        self.working_tree_node.child_trees.append(tt)
-        self.working_tree_node = tt
+        with self.manager.new_child_tree(arg_types, function_table.ast_node, user_class, class_table.node):
+            # Traverse the FunctionDef
+            self.traverse(function_table.ast_node)
 
-        # Traverse the FunctionDef
-        self.traverse(function_table.ast_node)
+            ret_type = self.manager.get_ret_type()
 
-        ret_type = self.working_tree_node.ret_type
-
-        self.working_tree_node.parent.subs[node] = custom_nodes.SelfMemberFunction(node.id, node.args, arg_types)
-
-        parent = self.working_tree_node.parent
-        self.working_tree_node = parent
+        self.manager.substitute_node(node, custom_nodes.SelfMemberFunction(node.id, node.args, arg_types))
 
         return ret_type
 
@@ -521,8 +441,8 @@ class _Deduction(ast.NodeVisitor):
         if type(ex_type) is m_types.Vector and node.id == "append":
             t = arg_types[0]
             ex_type.element_type.fill(t)
-            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
-                                                                            arg_types, ex_type)
+            self.manager.substitute_node(node, custom_nodes.MemberFunction(node.exp, node.id, node.args,
+                                                                            arg_types, ex_type))
             return m_types.Ntuple([])
 
         elif type(ex_type) is m_types.Unknown:
@@ -531,8 +451,9 @@ class _Deduction(ast.NodeVisitor):
             else:
                 # Replace with a node containing type info
 
-                self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
-                                                                                arg_types, ex_type)
+                self.manager.substitute_node(node, custom_nodes.MemberFunction(node.exp, node.id, node.args,
+                                                                                arg_types, ex_type))
+
                 # Create a new unknown for the return type of the built in call and tie this unknown to ex_type.
                 # This means that when ex_type's unknown is resolved, this new unknown will be resolved too
                 u = m_types.Unknown(self)
@@ -548,8 +469,8 @@ class _Deduction(ast.NodeVisitor):
         if type(b) is str:
             b = getattr(ex_type, b)
 
-        self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
-                                                                        arg_types, ex_type)
+        self.manager.substitute_node(node, custom_nodes.MemberFunction(node.exp, node.id, node.args,
+                                                                        arg_types, ex_type))
 
         # If the lookup fails, we might be able to use the right functions instead. For example
         # if __add__ fails try __radd__ instead. If radd works, replace it with `self.working_tree_node.subs`.
@@ -576,36 +497,31 @@ class _Deduction(ast.NodeVisitor):
         if type(ex_type) is m_types.UserClass:
 
             if node.id == "__id__":
-                self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
-                                                                                       arg_types, ex_type)
+
+                self.manager.substitute_node(node, custom_nodes.MemberFunction(node.exp, node.id, node.args,
+                                                                                       arg_types, ex_type))
+
                 return m_types.ID()
 
             class_name = ex_type.identifier
             class_table = self.whole_table[class_name]
             function_table = self.match_function(arg_types, class_table[node.id])
 
-            tt = TypeTree(node.id, arg_types, function_table.ast_node, self.working_tree_node, ex_type, class_table.node)
-            self.working_tree_node.child_trees.append(tt)
-            self.working_tree_node = tt
+            with self.manager.new_child_tree(arg_types, function_table.ast_node, ex_type, class_table.node):
+                # Traverse the FunctionDef
+                self.traverse(function_table.ast_node)
 
-            # Traverse the FunctionDef
-            self.traverse(function_table.ast_node)
+                ret_type = self.manager.get_ret_type()
 
-            ret_type = self.working_tree_node.ret_type
-
-            self.working_tree_node.parent.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args, arg_types, ex_type)
-
-
-            parent = self.working_tree_node.parent
-            self.working_tree_node = parent
+            self.manager.substitute_node(node, custom_nodes.MemberFunction(node.exp, node.id, node.args, arg_types, ex_type))
 
             return ret_type
         elif type(ex_type) is m_types.BuiltInClass:
 
             b = parse_template.built_in_classes.get_item(ex_type, node.id, arg_types)
 
-            self.working_tree_node.subs[node] = custom_nodes.MemberFunction(node.exp, node.id, node.args,
-                                                                            arg_types, ex_type)
+            self.manager.substitute_node(node, custom_nodes.MemberFunction(node.exp, node.id, node.args,
+                                                                            arg_types, ex_type))
 
             return b
         else:
@@ -615,7 +531,7 @@ class _Deduction(ast.NodeVisitor):
 
 
     def visit_SolitarySelf(self, node):
-        return self.working_tree_node.parent_class_type
+        return self.manager.get_parent_class_type()
 
     def visit_MonoAssign(self, node):
 
@@ -623,32 +539,32 @@ class _Deduction(ast.NodeVisitor):
 
         if isinstance(node.target, ast.Name):
 
-            if node.target.id in self.working_tree_node.symbol_map:
+            if self.manager.is_node_in_symbolmap(node.target.id):
 
-                if self.working_tree_node.symbol_map[node.target.id] != r_value_type:
-                    self.working_tree_node.symbol_map[node.target.id] = r_value_type
+                if self.manager.get_symbol(node.target.id) != r_value_type:
+                    self.manager.insert_symbol(node.target.id, r_value_type)
                 else:
                     # If the variable has been assigned to before and this new assignment is of the same value, we have a reassignment (such as a = a + x)
-                    self.working_tree_node.subs[node] = custom_nodes.Reassign(node.target, node.value)
+                    self.manager.substitute_node(node, custom_nodes.Reassign(node.target, node.value))
             else:
-                self.working_tree_node.symbol_map[node.target.id] = r_value_type
+
+                self.manager.insert_symbol(node.target.id, r_value_type)
 
         elif isinstance(node.target, custom_nodes.SelfMemberVariable):
-            self.working_tree_node.symbol_map["self." + node.target.id] = r_value_type
+            self.manager.insert_symbol("self." + node.target.id, r_value_type)
         else:
             raise NotImplemented()
 
 
     def visit_InitAssign(self, node):
-        self.working_tree_node.symbol_map["self." + node.id] = self.traverse(node.value)
+        self.manager.insert_symbol("self." + node.id, self.traverse(node.value))
 
 
 
 
 
     def visit_Return(self, node):
-        ret_type = self.traverse(node.value)
-        self.working_tree_node.ret_type = ret_type
+        self.manager.set_ret_type(self.traverse(node.value))
 
 
     def visit_If(self, node):
@@ -665,7 +581,7 @@ class _Deduction(ast.NodeVisitor):
         if type(node.target) is ast.Name:
             ex_type = self.traverse(node.iter)
             logger.warning("Must add expr_type to MemberFunction")
-            self.working_tree_node.symbol_map[node.target.id] = self.traverse(custom_nodes.MemberFunction(node.iter, "__next__", [])).contained_type
+            self.manager.insert_symbol(node.target.id, self.traverse(custom_nodes.MemberFunction(node.iter, "__next__", [])).contained_type)
         else:
             raise "For target must be a name"
 

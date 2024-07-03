@@ -1,5 +1,6 @@
 import ast
 import custom_unparser
+import mutability
 import rustify
 import sugar
 import symbol_table
@@ -84,6 +85,13 @@ def analysis(source, exe=None, verbose=False, verifier=None, compile=True):
     _ir = translator.translate(tree)
 
     logger.debug(ast.dump(_ir, indent=4))
+
+    logger.debug("##################################")
+    logger.debug("Mutability")
+    logger.debug("##################################")
+
+    print(mutability.fill_mutability(_ir, t))
+    raise 2
 
     logger.debug("##################################")
     logger.debug("Post processing")

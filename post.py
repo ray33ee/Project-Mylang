@@ -14,6 +14,4 @@ class _Post(ast.NodeTransformer):
     def __init__(self):
         pass
 
-    def visit_ClassDef(self, node):
-        return ir.CyclicClassDef(node)
 

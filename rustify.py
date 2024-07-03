@@ -229,7 +229,7 @@ class _Rustify(ast.NodeVisitor):
         self.traverse(node.functions)
         self.traverse(node.classes)
 
-    def visit_CyclicClassDef(self, node):
+    def visit_ClassDef(self, node):
 
         self.fill()
         self.write("#[derive(dumpster::Collectable)]")

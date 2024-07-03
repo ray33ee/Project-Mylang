@@ -165,3 +165,34 @@ class BuiltInClassConstructor(ConstructorCall):
     def __init__(self, id, args, types=None):
         super().__init__(id, args, types)
 
+
+class GetterFunctionDef(ast.FunctionDef):
+    _fields = ["name", "body"]
+
+    def __init__(self, name, body, decorator_list, returns, type_comment, type_params):
+        super().__init__()
+        self.name = name
+        self.args = ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], defaults=[])
+        self.body = body
+        self.member_list = None
+        self.decorator_list = decorator_list
+        self.returns = returns
+        self.type_comment = type_comment
+        self.type_params = type_params
+        self.lineno = None
+
+
+class SetterFunctionDef(ast.FunctionDef):
+    _fields = ["name", "args", "body"]
+
+    def __init__(self, name, args, body, decorator_list, returns, type_comment, type_params):
+        super().__init__()
+        self.name = name
+        self.args = args
+        self.body = body
+        self.member_list = None
+        self.decorator_list = decorator_list
+        self.returns = returns
+        self.type_comment = type_comment
+        self.type_params = type_params
+        self.lineno = None
